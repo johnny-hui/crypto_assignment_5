@@ -1,6 +1,9 @@
 import getopt
 import sys
 
+from utility.constants import BLOCK_SIZE
+from utility.utilities import is_valid_key
+
 # CONSTANTS
 ECB = "ecb"
 CBC = "cbc"
@@ -15,9 +18,9 @@ def parse_arguments():
         A Boolean representing the subkey generation flag
     """
     # Initialize variables
-    mode, subkey_gen, key = "", "", ""
+    mode, subkey_gen_flag, key = "", "", ""
     arguments = sys.argv[1:]
-    opts, user_list_args = getopt.getopt(arguments, 'm:s:k')
+    opts, _ = getopt.getopt(arguments, 'm:s:k:')
 
     if len(opts) == 0:
         sys.exit("[+] INIT ERROR: No arguments were provided!")
@@ -33,24 +36,25 @@ def parse_arguments():
         if opt == '-s':  # For subkey generation
             if argument.lower() in ("true", "false"):
                 if argument == "true":
-                    subkey_gen = True
+                    subkey_gen_flag = True
                 else:
-                    subkey_gen = False
+                    subkey_gen_flag = False
             else:
                 sys.exit("[+] INIT ERROR: An invalid option for subkey generation was provided! (-s option)")
 
-        if opt == '-k':
-            key = argument
-
-    # REQUIREMENT: A main key
-    if len(key) == 0:
-        sys.exit("[+] INIT ERROR: No key was provided!")
+        if opt == '-k':  # For key
+            if is_valid_key(argument, BLOCK_SIZE):
+                key = argument
+            else:
+                sys.exit("[+] INIT ERROR: An invalid key was provided! (-k option)")
 
     # If no parameters provided, then resort to default
+    if len(key) == 0:
+        sys.exit("[+] INIT ERROR: No key was provided!")
     if len(mode) == 0:
         mode = ECB
-    if isinstance(subkey_gen, str):
-        subkey_gen = False
+    if isinstance(subkey_gen_flag, str):
+        subkey_gen_flag = True
 
-    return mode, subkey_gen, key
+    return mode, subkey_gen_flag, key
 
