@@ -1,6 +1,8 @@
-from utility.constants import INIT_MSG, INIT_SUCCESS_MSG, ROUNDS, BLOCK_SIZE, DEFAULT_ROUND_KEYS
+from utility.constants import (INIT_MSG, INIT_SUCCESS_MSG, ROUNDS,
+                               BLOCK_SIZE, DEFAULT_ROUND_KEYS)
 from utility.init import ECB
-from utility.utilities import pad_block, encrypt_block, decrypt_block, unpad_block, is_valid_key
+from utility.utilities import (pad_block, encrypt_block, decrypt_block,
+                               unpad_block, get_subkeys_from_user, get_user_command_option)
 
 
 class CustomCipher:
@@ -31,7 +33,8 @@ class CustomCipher:
     def round_function(self, right_block: str, key: str):
         """
         A basic round function for the custom Feistel cipher
-        that involves XOR'ing the right block with the key.
+        involving XOR'ing each character (in binary) of the
+        right block with the key.
 
         @param right_block:
             A string containing the right block
@@ -63,7 +66,7 @@ class CustomCipher:
             return None
 
         if self.mode == ECB:
-            print("[+] ENCRYPTION: Now encrypting plaintext in ECB mode...")
+            print("[+] ECB ENCRYPTION: Now encrypting plaintext in ECB mode...")
 
             # Partition the plaintext into blocks and encrypt each block
             for i in range(0, len(plaintext), self.block_size):
@@ -91,11 +94,11 @@ class CustomCipher:
         plaintext = ''
 
         if len(self.sub_keys) == 0:
-            print("[+] ENCRYPT ERROR: There are no sub-keys provided!")
+            print("[+] DECRYPT ERROR: There are no sub-keys provided!")
             return None
 
         if self.mode == ECB:
-            print("[+] Now encrypting plaintext in ECB mode...")
+            print("[+] ECB DECRYPTION: Now decrypting plaintext in ECB mode...")
 
             # Partition the ciphertext into blocks and decrypt each block
             for i in range(0, len(ciphertext), self.block_size):
@@ -115,7 +118,6 @@ class CustomCipher:
 
         @return: None
         """
-        command = None
         print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
         # If subkey generation is enabled
@@ -125,23 +127,11 @@ class CustomCipher:
                 subkey = self.key[i % len(self.key):] + self.key[:i % len(self.key)]
                 self.sub_keys.append(subkey)
         else:
-            try:
-                while command not in (1, 2):
-                    command = int(input("[+] Enter 1 (to provide own sub-keys); Enter 2 (to use default sub-keys)"))
-
-                # TODO: Refactor into separate functions for each command
-                if command == 1:
-                    print(f"[+] USER-SPECIFIED KEYS: Please provide your own set of {self.rounds} sub-keys")
-                    for i in range(self.rounds):
-                        while True:
-                            subkey = input(f"[+] ROUND {i + 1} - Enter a key: ")
-                            if is_valid_key(subkey, self.block_size):
-                                self.sub_keys.append(subkey)
-                                break
-                if command == 2:
-                    for key in DEFAULT_ROUND_KEYS:
-                        self.sub_keys.append(hex(key)[2:].zfill(8))
-            except ValueError as e:
-                print(f"[+] ERROR: Invalid command provided; please try again. ({e})")
+            command = get_user_command_option(opt_range=(1, 2))
+            if command == 1:
+                self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
+            if command == 2:
+                for key in DEFAULT_ROUND_KEYS:
+                    self.sub_keys.append(hex(key)[2:].zfill(8))
 
         print(f"[+] OPERATION SUCCESSFUL: {self.rounds} sub-keys have been added!")

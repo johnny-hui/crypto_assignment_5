@@ -1,3 +1,6 @@
+from utility.constants import GET_SUBKEY_USER_PROMPT
+
+
 def is_valid_key(key: str, block_size: int):
     """
     Checks if the given key is of valid length
@@ -21,8 +24,9 @@ def is_valid_key(key: str, block_size: int):
 
 def pad_block(block_size: int, block: str):
     """
-    Pads the given block with leading zeroes, based on
-    the block size in bits.
+    Pads the given block according to the block size with a
+    character based on the padding length (based on the PKCS#7
+    padding scheme).
 
     @param block_size:
         An integer representing the block size
@@ -33,12 +37,15 @@ def pad_block(block_size: int, block: str):
     @return: padded_block
         The padded block (String)
     """
-    return block + (chr(block_size - len(block)) * (block_size - len(block)))
+    padding_length = block_size - len(block)
+    padding = chr(padding_length) * padding_length
+    return block + padding
 
 
 def unpad_block(block: str):
     """
-    Removes padding from the given block.
+    Removes padding from the given block (based on
+    the PKCS#7 padding scheme).
 
     @param block:
         A string representing the block to be unpadded
@@ -112,3 +119,52 @@ def decrypt_block(self: object, block: str, mode: str):
 
     # Concatenate the two halves
     return right_half + left_half
+
+
+def get_user_command_option(opt_range: tuple):
+    """
+    Prompts a user for a command option.
+
+    @param opt_range:
+        A tuple containing the minimum and maximum
+        values for command options
+
+    @return: command
+    """
+    while True:
+        try:
+            command = int(input(GET_SUBKEY_USER_PROMPT))
+            if command in opt_range:
+                break
+            else:
+                print("[+] ERROR: Invalid command provided; please try again.")
+        except ValueError as e:
+            print(f"[+] ERROR: Invalid command provided; please try again ({e})")
+    return command
+
+
+def get_subkeys_from_user(block_size: int, rounds: int):
+    """
+    Prompts the user to provide an X number of sub-keys
+    based on the number of rounds.
+
+    @param block_size:
+        An integer representing the block size
+
+    @param rounds:
+        An integer representing the number of rounds
+
+    @return: subkeys
+        A list of strings containing per-round sub-keys
+    """
+    subkeys = []
+    print(f"[+] USER-SPECIFIED KEYS: Please provide your own set of {rounds} sub-keys")
+
+    for i in range(rounds):
+        while True:
+            subkey = input(f"[+] ROUND {i + 1} - Enter a key: ")
+            if is_valid_key(subkey, block_size):
+                subkeys.append(subkey)
+                break
+
+    return subkeys

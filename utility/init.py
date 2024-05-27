@@ -1,12 +1,7 @@
 import getopt
 import sys
-
-from utility.constants import BLOCK_SIZE
+from utility.constants import BLOCK_SIZE, ECB, CBC
 from utility.utilities import is_valid_key
-
-# CONSTANTS
-ECB = "ecb"
-CBC = "cbc"
 
 
 def parse_arguments():
@@ -14,8 +9,9 @@ def parse_arguments():
     Parse the command line for arguments.
 
     @return mode, subkey_gen, key:
-        Strings representing the mode and key
-        A Boolean representing the subkey generation flag
+        mode - String representing the mode of the key
+        subkey_gen - Boolean representing the subkey generation decision
+        key - String reresenting the key
     """
     # Initialize variables
     mode, subkey_gen_flag, key = "", "", ""
