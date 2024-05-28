@@ -1,8 +1,10 @@
 from models.CustomCipher import CustomCipher
+from utility.init import parse_arguments
 
 if __name__ == '__main__':
-    cipher = CustomCipher('mysecretkey')
-    ciphertext = cipher.encrypt("12345678")
+    mode, subkey_flag, key = parse_arguments()
+    cipher = CustomCipher(key, mode, subkey_flag)
+    ciphertext = cipher.encrypt("Booba")
     print(f"[+] Ciphertext (after {cipher.rounds} rounds): " + ciphertext)
 
     plaintext = cipher.decrypt(ciphertext)

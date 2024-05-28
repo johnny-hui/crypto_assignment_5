@@ -24,17 +24,16 @@ def parse_arguments():
     for opt, argument in opts:
         if opt == '-m':  # For mode
             if argument.lower() in (ECB, CBC):
-                mode = argument
+                mode = argument.lower()
             else:
                 sys.exit("[+] INIT ERROR: An invalid mode was provided! (must choose "
                          "either ECB or CBC mode for -m option)")
 
         if opt == '-s':  # For subkey generation
-            if argument.lower() in ("true", "false"):
-                if argument == "true":
-                    subkey_gen_flag = True
-                else:
-                    subkey_gen_flag = False
+            if argument.lower() == "true":
+                subkey_gen_flag = True
+            elif argument.lower() == "false":
+                subkey_gen_flag = False
             else:
                 sys.exit("[+] INIT ERROR: An invalid option for subkey generation was provided! (-s option)")
 

@@ -1,5 +1,5 @@
 # CIPHER CONFIG
-BLOCK_SIZE = 8  # => 8 characters or (64 bits)
+BLOCK_SIZE = 8  # => 8 char(bytes) or (64 bits)
 ROUNDS = 8
 DEFAULT_ROUND_KEYS = [
     0xdddddddd, 0xeeeeeeee, 0xaaaaaaaa, 0xdddddddd,

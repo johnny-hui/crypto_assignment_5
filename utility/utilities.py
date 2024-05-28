@@ -86,7 +86,7 @@ def unpad_block(block: str):
     return block
 
 
-def encrypt_block(self: object, block: str, mode: str):
+def encrypt_block(self: object, block: str):
     """
     Encrypts the given block on a per round basis.
 
@@ -118,7 +118,7 @@ def encrypt_block(self: object, block: str, mode: str):
     return right_half + left_half
 
 
-def decrypt_block(self: object, block: str, mode: str):
+def decrypt_block(self: object, block: str):
     """
     Decrypts the given block on a per round basis.
 

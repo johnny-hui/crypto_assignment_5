@@ -1,6 +1,8 @@
+import base64
+import secrets
 from utility.constants import (INIT_MSG, INIT_SUCCESS_MSG, ROUNDS,
                                BLOCK_SIZE, DEFAULT_ROUND_KEYS, OP_ENCRYPT, OP_DECRYPT)
-from utility.init import ECB
+from utility.init import ECB, CBC
 from utility.utilities import (pad_block, encrypt_block, decrypt_block,
                                unpad_block, get_subkeys_from_user, get_user_command_option, get_default_subkeys,
                                is_sub_keys_generated)
@@ -17,7 +19,7 @@ class CustomCipher:
         rounds - The number of rounds the cipher should run (default=8)
         block_size - The block size in bits (default=64)
         key - The main key used for encryption/decryption
-        subkey_flag - A flag used to turn on subkey generation
+        subkey_flag - A flag used to turn on subkey generation (default=True)
         sub_keys - A list containing sub-keys
     """
     def __init__(self, key, mode=ECB, subkey_flag=True):
@@ -26,6 +28,7 @@ class CustomCipher:
         self.rounds = ROUNDS  # Print config upon init
         self.block_size = BLOCK_SIZE  # Print config upon init
         self.key = key  # Print config upon init
+        self.iv = None  # Print config upon init
         self.subkey_flag = subkey_flag  # Print config upon init (TODO: can be altered in menu)
         self.sub_keys = []
         self.__process_subkey_generation()
@@ -41,7 +44,7 @@ class CustomCipher:
             A string containing the right block
 
         @param key:
-            A string representing the key
+            A string representing the subkey
 
         @return: result
             A string representing the transformed right block
@@ -108,7 +111,30 @@ class CustomCipher:
                 if len(block) < self.block_size:  # Pad block to 64
                     block = pad_block(self.block_size, block)
 
-                ciphertext += encrypt_block(self, block, self.mode)
+                ciphertext += encrypt_block(self, block)
+
+        if self.mode == CBC:
+            print("[+] CBC ENCRYPTION: Now encrypting plaintext in CBC mode...")
+
+            # Generate a random initialization vector (IV)
+            self.iv = base64.b64encode(secrets.token_bytes(self.block_size)).decode()
+            previous_block = self.iv
+
+            # Partition the plaintext into blocks and encrypt each block
+            for i in range(0, len(plaintext), self.block_size):
+                block = plaintext[i:i + self.block_size]
+
+                if len(block) < self.block_size:  # Pad block to 64
+                    block = pad_block(self.block_size, block)
+
+                # XOR with the previous ciphertext block
+                block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, block))
+
+                # Encrypt the block
+                ciphertext += encrypt_block(self, block)
+
+                # Set previous block to new ciphertext block
+                previous_block = ciphertext
 
         return ciphertext
 
@@ -135,10 +161,28 @@ class CustomCipher:
             # Partition the ciphertext into blocks and decrypt each block
             for i in range(0, len(ciphertext), self.block_size):
                 block = ciphertext[i:i + self.block_size]
-                plaintext += decrypt_block(self, block, self.mode)
+                plaintext_block = decrypt_block(self, block)
+                plaintext += plaintext_block
 
-            if len(plaintext) % self.block_size == 0:
-                plaintext = unpad_block(plaintext)
+        if self.mode == CBC:
+            print("[+] CBC DECRYPTION: Now decrypting plaintext in CBC mode...")
+            previous_block = self.iv
+
+            # Partition the ciphertext into blocks and decrypt each block
+            for i in range(0, len(ciphertext), self.block_size):
+                block = ciphertext[i:i + self.block_size]
+                decrypted_block = decrypt_block(self, block)
+
+                # XOR with previous block
+                plaintext_block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, decrypted_block))
+                plaintext += plaintext_block
+                previous_block = block
+
+            # Reset IV for next encryption
+            self.iv = None
+
+        if len(plaintext) % self.block_size == 0:
+            plaintext = unpad_block(plaintext)
 
         return plaintext
 
@@ -178,10 +222,9 @@ class CustomCipher:
                 # b) XOR each byte of the shifted result with the round number
                 subkey = [(byte ^ (i + 1)) for byte in subkey]
                 self.sub_keys.append(''.join(chr(byte) for byte in subkey))
-
         print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
-        if self.subkey_flag is True:
+        if self.subkey_flag:
             generate_subkeys()
         else:
             command = get_user_command_option(opt_range=(1, 2))
