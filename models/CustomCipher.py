@@ -1,14 +1,15 @@
 from utility.constants import (INIT_MSG, INIT_SUCCESS_MSG, ROUNDS,
-                               BLOCK_SIZE, DEFAULT_ROUND_KEYS)
+                               BLOCK_SIZE, DEFAULT_ROUND_KEYS, OP_ENCRYPT, OP_DECRYPT)
 from utility.init import ECB
 from utility.utilities import (pad_block, encrypt_block, decrypt_block,
-                               unpad_block, get_subkeys_from_user, get_user_command_option)
+                               unpad_block, get_subkeys_from_user, get_user_command_option, get_default_subkeys,
+                               is_sub_keys_generated)
 
 
 class CustomCipher:
     """ A class representing the custom Feistel cipher.
 
-    @attention: CBC Encryption Mode Supported
+    @attention: CBC Encryption Mode
         This cipher also supports CBC encryption (use '-m CBC' as program argument)
 
     Attributes:
@@ -32,9 +33,9 @@ class CustomCipher:
 
     def round_function(self, right_block: str, key: str):
         """
-        A basic round function for the custom Feistel cipher
-        involving XOR'ing each character (in binary) of the
-        right block with the key.
+        A basic round function that involves substitution
+        and permutation of the right block, followed by an
+        XOR operation with the key.
 
         @param right_block:
             A string containing the right block
@@ -42,10 +43,43 @@ class CustomCipher:
         @param key:
             A string representing the key
 
-        @return: XOR'd result
-            The result of XOR'ing right block and key
+        @return: result
+            A string representing the transformed right block
         """
-        return ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(right_block, key))
+        def substitute(byte: str):
+            """
+            Substitution of a character(byte) of the right block
+            by taking ASCII value modulo 256.
+
+            @param byte:
+                A string containing a single character (8-bits)
+
+            @return: chr(ord(byte) % 256)
+                The substituted character
+            """
+            return chr(ord(byte) % 256)
+
+        def permutation(block: str):
+            """
+            Permutate the right block by reversing the order.
+
+            @param block:
+                A string containing characters (bytes) of
+                the right block
+
+            @return: block[::-1]
+                The reversed order of the right block
+            """
+            return block[::-1]
+
+        # SUBSTITUTION: Each byte(char) of right block
+        new_right_block = ''.join(substitute(byte) for byte in right_block)
+
+        # PERMUTATION: Reverses the order of bytes(char)
+        new_right_block = permutation(new_right_block)
+
+        # XOR with the subkey
+        return ''.join(chr(ord(r) ^ ord(k)) for r, k in zip(new_right_block, key))
 
     def encrypt(self, plaintext: str):
         """
@@ -61,8 +95,7 @@ class CustomCipher:
         # Initialize Variables
         ciphertext = ''
 
-        if len(self.sub_keys) == 0:
-            print("[+] ENCRYPT ERROR: There are no sub-keys provided!")
+        if is_sub_keys_generated(self.sub_keys, operation=OP_ENCRYPT) is False:
             return None
 
         if self.mode == ECB:
@@ -93,8 +126,7 @@ class CustomCipher:
         # Initialize Variables
         plaintext = ''
 
-        if len(self.sub_keys) == 0:
-            print("[+] DECRYPT ERROR: There are no sub-keys provided!")
+        if is_sub_keys_generated(self.sub_keys, operation=OP_DECRYPT) is False:
             return None
 
         if self.mode == ECB:
@@ -118,20 +150,44 @@ class CustomCipher:
 
         @return: None
         """
+        def generate_subkeys():
+            """
+            Generates a set of sub-keys from the main key on a
+            per-round basis based on a permutation scheme.
+
+            @attention: Permutation Scheme
+                - a) Perform byte rotation with round number and length of the key
+                - b) XOR each byte of the shifted result with the round number
+
+            @return: None
+            """
+            print(f"[+] Generating sub-keys from the following main key: {self.key}")
+
+            # Ensure the main key is of sufficient size
+            if len(self.key) < self.block_size:
+                self.key = (self.key * (self.block_size // len(self.key) + 1))[:self.block_size]
+
+            # Convert each character of key to ASCII values
+            key_bytes = [ord(char) for char in self.key]
+
+            # Round-key generation with a permutation scheme
+            for i in range(self.rounds):
+                # a) Byte rotation with round number and length of the key
+                subkey = key_bytes[i % len(self.key):] + key_bytes[:i % len(self.key)]
+
+                # b) XOR each byte of the shifted result with the round number
+                subkey = [(byte ^ (i + 1)) for byte in subkey]
+                self.sub_keys.append(''.join(chr(byte) for byte in subkey))
+
         print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
-        # If subkey generation is enabled
         if self.subkey_flag is True:
-            print(f"[+] Generating sub-keys from the following main key: {self.key}")
-            for i in range(self.rounds):
-                subkey = self.key[i % len(self.key):] + self.key[:i % len(self.key)]
-                self.sub_keys.append(subkey)
+            generate_subkeys()
         else:
             command = get_user_command_option(opt_range=(1, 2))
             if command == 1:
                 self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
             if command == 2:
-                for key in DEFAULT_ROUND_KEYS:
-                    self.sub_keys.append(hex(key)[2:].zfill(8))
+                self.sub_keys = get_default_subkeys(DEFAULT_ROUND_KEYS)
 
         print(f"[+] OPERATION SUCCESSFUL: {self.rounds} sub-keys have been added!")

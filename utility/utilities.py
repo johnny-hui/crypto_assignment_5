@@ -1,4 +1,5 @@
-from utility.constants import GET_SUBKEY_USER_PROMPT
+from utility.constants import GET_SUBKEY_USER_PROMPT, OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
+    NO_SUBKEYS_DECRYPT_MSG
 
 
 def is_valid_key(key: str, block_size: int):
@@ -20,6 +21,31 @@ def is_valid_key(key: str, block_size: int):
         return False
     else:
         return True
+
+
+def is_sub_keys_generated(subkeys: list, operation: str):
+    """
+    Checks if sub-keys are generated; this function is
+    called before encryption or decryption is performed.
+
+    @param subkeys:
+        A list containing sub-keys from the calling class
+
+    @param operation:
+        A string denoting the operation to be performed
+
+    @return: Boolean (T/F)
+        True if sub-keys are generated; false otherwise
+    """
+    if operation == OP_ENCRYPT:
+        if len(subkeys) == 0:
+            print(NO_SUBKEYS_ENCRYPT_MSG)
+            return False
+    if operation == OP_DECRYPT:
+        if len(subkeys) == 0:
+            print(NO_SUBKEYS_DECRYPT_MSG)
+            return False
+    return True
 
 
 def pad_block(block_size: int, block: str):
@@ -44,7 +70,7 @@ def pad_block(block_size: int, block: str):
 
 def unpad_block(block: str):
     """
-    Removes padding from the given block (based on
+    Removes padding from any given block (based on
     the PKCS#7 padding scheme).
 
     @param block:
@@ -54,7 +80,10 @@ def unpad_block(block: str):
         The unpadded block (String)
     """
     padding_char = block[-1]
-    return block[:-ord(padding_char)]
+    padding_len = ord(padding_char)
+    if block.endswith(padding_char * padding_len):
+        return block[:-padding_len]
+    return block
 
 
 def encrypt_block(self: object, block: str, mode: str):
@@ -159,12 +188,30 @@ def get_subkeys_from_user(block_size: int, rounds: int):
     """
     subkeys = []
     print(f"[+] USER-SPECIFIED KEYS: Please provide your own set of {rounds} sub-keys")
-
     for i in range(rounds):
         while True:
             subkey = input(f"[+] ROUND {i + 1} - Enter a key: ")
             if is_valid_key(subkey, block_size):
                 subkeys.append(subkey)
                 break
-
     return subkeys
+
+
+def get_default_subkeys(default_keys: list[int]):
+    """
+    Fetches default sub-keys (in hex), converts them
+    to strings and puts them into a list.
+
+    @param default_keys:
+        A list of default sub-keys (in hex)
+
+    @return: sub_keys
+        A list containing the default sub-keys (strings)
+    """
+    sub_keys = []
+    print(f"[+] DEFAULT SUBKEYS: Fetching default subkeys...")
+    for key in default_keys:
+        print(hex(key)[2:].zfill(8))
+        sub_keys.append(hex(key)[2:].zfill(8))
+    return sub_keys
+
