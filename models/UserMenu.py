@@ -1,9 +1,88 @@
-# 1) User can clear subkeys
-# 2) User can change main key
-# 3) Encrypt a text file
-# 3) Decrypt a text file
-# 4) Encrypt a picture
-# 6) Decrypt a picture
-# 5) Encrypt a string (from user input) and print resulting ciphertext
-# 5) Decrypt a string (from user input) and print resulting ciphertext
-# 7) View Cipher Configuration
+import select
+import sys
+from models.CustomCipher import CustomCipher
+from utility.constants import USER_INPUT_PROMPT, USER_MENU_TITLE, USER_MENU_COLUMNS, \
+    MIN_MENU_ITEM_VALUE, MAX_MENU_ITEM_VALUE, USER_MENU_OPTIONS_LIST
+from utility.init import print_config
+from utility.utilities import get_user_menu_option, make_table, change_mode, change_main_key, regenerate_sub_keys
+
+
+class UserMenu:
+    """ A class for an interactable user menu.
+
+    Attributes:
+        table - A table containing several user menu options
+        cipher - A CustomCipher object
+        terminate - A boolean for the termination of the application
+    """
+    def __init__(self, *args):
+        self.table = make_table(USER_MENU_TITLE, USER_MENU_COLUMNS, USER_MENU_OPTIONS_LIST)
+        self.cipher = CustomCipher(key=args[0], mode=args[1], subkey_flag=args[2])
+        self.terminate = False
+
+    def start(self):
+        """
+        Starts the application.
+        @return: None
+        """
+        self.__menu()
+
+    def close_application(self):
+        """
+        Terminates the application by setting a termination flag to
+        end all current threads.
+
+        @param self:
+            A reference to the calling class object
+
+        @return: None
+        """
+        print("[+] CLOSE APPLICATION: Now closing the application...")
+        self.terminate = True
+        print("[+] APPLICATION CLOSED: Application has been successfully terminated!")
+
+    def __menu(self):
+        """
+        Displays the menu and handles user input
+        using select().
+
+        @return: None
+        """
+        inputs = [sys.stdin]
+        print("=" * 160)
+        print(self.table)
+        print(USER_INPUT_PROMPT)
+
+        while not self.terminate:
+            readable, _, _ = select.select(inputs, [], [])
+
+            # Get User Command from the Menu and perform the task
+            for fd in readable:
+                if fd == sys.stdin:
+                    command = get_user_menu_option(fd, MIN_MENU_ITEM_VALUE, MAX_MENU_ITEM_VALUE)
+
+                    if command == 1:
+                        print("PLACEHOLDER")
+
+                    if command == 2:
+                        print("PLACEHOLDER")
+
+                    if command == 3:
+                        change_mode(self.cipher)
+
+                    if command == 4:
+                        change_main_key(self.cipher)
+
+                    if command == 5:
+                        regenerate_sub_keys(self.cipher)
+
+                    if command == 6:
+                        print_config(self.cipher)
+
+                    if command == 7:
+                        self.close_application()
+                        return None
+
+                print("=" * 160)
+                print(self.table)
+                print(USER_INPUT_PROMPT)

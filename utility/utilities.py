@@ -1,5 +1,8 @@
+from typing import TextIO
+from prettytable import PrettyTable
 from utility.constants import GET_SUBKEY_USER_PROMPT, OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
-    NO_SUBKEYS_DECRYPT_MSG
+    NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
+    CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT
 
 
 def is_valid_key(key: str, block_size: int):
@@ -17,7 +20,7 @@ def is_valid_key(key: str, block_size: int):
         True if valid; false otherwise
     """
     if len(key) < block_size:
-        print(f"[+] INVALID KEY: An invalid key was provided (key has to be greater than {block_size} characters)")
+        print(f"[+] INVALID KEY: An invalid key was provided (key has to be greater than {block_size} characters)!")
         return False
     else:
         return True
@@ -96,9 +99,6 @@ def encrypt_block(self: object, block: str):
     @param block:
         A string representing the block to be encrypted
 
-    @param mode:
-        A string representing the encryption mode
-
     @return: encrypted_block
         The encrypted left and right halves concatenated (string)
     """
@@ -127,9 +127,6 @@ def decrypt_block(self: object, block: str):
 
     @param block:
         A string representing the block to be encrypted
-
-    @param mode:
-        A string representing the encryption mode
 
     @return: decrypted_block
         The decrypted left and right halves concatenated (string)
@@ -210,8 +207,134 @@ def get_default_subkeys(default_keys: list[int]):
     """
     sub_keys = []
     print(f"[+] DEFAULT SUBKEYS: Fetching default subkeys...")
-    for key in default_keys:
-        print(hex(key)[2:].zfill(8))
-        sub_keys.append(hex(key)[2:].zfill(8))
+    for round, key in enumerate(default_keys):
+        round += 1
+        subkey = hex(key)[2:].zfill(8)
+        sub_keys.append(subkey)
+        print(f"[+] ROUND {round}: {subkey}")
     return sub_keys
 
+
+def make_table(title: str, columns: list[str], content: list[list[str]]):
+    """
+    Constructs a PrettyTable.
+
+    @param title:
+        A string containing the title of the table
+
+    @param columns:
+        A list of strings containing the columns(fields) of the table
+
+    @param content:
+        A list containing the contents of the table
+
+    @return: table
+        A PrettyTable object.
+    """
+    table = PrettyTable()
+    table.title = title
+    table.field_names = columns
+    for item in content:
+        table.add_row(item)
+    return table
+
+
+# USER MENU FUNCTIONS
+def get_user_menu_option(fd: TextIO, min_num_options: int, max_num_options: int):
+    """
+    Gets the user selection for the menu.
+
+    @param fd:
+        The file descriptor for stdin
+
+    @param min_num_options:
+        The minimum number of options possible
+
+    @param max_num_options:
+        The maximum number of options possible
+
+    @return: command
+        An integer representing the selection
+    """
+    while True:
+        try:
+            command = int(fd.readline().strip())
+            while not (min_num_options <= command <= max_num_options):
+                print(INVALID_MENU_SELECTION.format(min_num_options, max_num_options))
+                command = int(fd.readline().strip())
+            print(MENU_ACTION_START_MSG.format(command))
+            return command
+        except (ValueError, TypeError) as e:
+            print(INVALID_INPUT_MENU_ERROR.format(e))
+            print(INVALID_MENU_SELECTION.format(min_num_options, max_num_options))
+
+
+def change_mode(cipher: object):
+    """
+    Toggles a change to the CustomCipher's mode.
+
+    @attention: Use Case
+        This function is called by UserMenu class
+
+    @param cipher:
+        A CustomCipher object
+
+    @return: None
+    """
+    if cipher.mode == ECB:
+        cipher.mode = CBC
+    else:
+        cipher.mode = ECB
+    print(f"[+] MODE CHANGED TO -> {cipher.mode.upper()}")
+
+
+def change_main_key(cipher: object):
+    """
+    Prompts the user for a new main key for
+    the CustomCipher and replaces the old key.
+
+    @attention: Use Case
+        This function is called by UserMenu class
+
+    @param cipher:
+        A CustomCipher object
+
+    @return: None
+    """
+    while True:
+        key = input(CHANGE_KEY_PROMPT)
+        if key == 'q':
+            return None
+        if is_valid_key(key, cipher.block_size):
+            cipher.key = key
+            print(f"[+] KEY CHANGED: The main key has been changed to -> '{key}'")
+            print("[+] HINT: To generate sub-keys with this new main key, perform the "
+                  "'Regenerate Sub-keys' command in menu")
+            return None
+
+
+def regenerate_sub_keys(cipher: object):
+    """
+    Regenerates sub-keys by using either the main key,
+    default sub-keys, or user-provided sub-keys.
+
+    @attention: Use Case
+        This function is called by UserMenu class
+
+    @param cipher:
+        A CustomCipher object
+
+    @return: None
+    """
+    while True:
+        try:
+            option = int(input(REGENERATE_SUBKEY_PROMPT))
+            if option == 0:
+                return None
+            elif option in (1, 2, 3):
+                cipher.process_subkey_generation(menu_option=option)
+                return None
+            else:
+                print("[+] Invalid option selected; please enter a value from (0 to 3)")
+        except (ValueError, TypeError) as e:
+            print(f"[+] Invalid option selected; please try again! ({e})")

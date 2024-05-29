@@ -1,7 +1,8 @@
 import getopt
 import sys
-from utility.constants import BLOCK_SIZE, ECB, CBC
-from utility.utilities import is_valid_key
+from utility.constants import (BLOCK_SIZE, ECB, CBC, INIT_CONFIG_ATTRIBUTES, INIT_CONFIG_TITLE,
+                               INIT_CONFIG_COLUMNS)
+from utility.utilities import is_valid_key, make_table
 
 
 def parse_arguments():
@@ -53,3 +54,32 @@ def parse_arguments():
 
     return mode, subkey_gen_flag, key
 
+
+def print_config(self: object):
+    """
+    Prints the cipher's configuration.
+
+    @attention Use Case:
+        Used only by CustomCipher class
+
+    @param self:
+        A reference to the calling class object
+
+    @return: None
+    """
+    # Initialize Variables
+    content = []
+    attributes = vars(self)  # Get object attributes
+    index = 0
+
+    # Iterate through cipher configuration and put into a list for table
+    for _, value in attributes.items():
+        if index == 0:
+            content.append([INIT_CONFIG_ATTRIBUTES[index], value.upper()])
+        else:
+            content.append([INIT_CONFIG_ATTRIBUTES[index], value])
+        index += 1
+
+    # Print config
+    print("=" * 160)
+    print(make_table(title=INIT_CONFIG_TITLE, columns=INIT_CONFIG_COLUMNS, content=content))

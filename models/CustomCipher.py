@@ -1,7 +1,7 @@
 import base64
 import secrets
-from utility.constants import (INIT_MSG, INIT_SUCCESS_MSG, ROUNDS,
-                               BLOCK_SIZE, DEFAULT_ROUND_KEYS, OP_ENCRYPT, OP_DECRYPT)
+from utility.constants import (INIT_MSG, ROUNDS, BLOCK_SIZE, DEFAULT_ROUND_KEYS,
+                               OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG)
 from utility.init import ECB, CBC
 from utility.utilities import (pad_block, encrypt_block, decrypt_block,
                                unpad_block, get_subkeys_from_user, get_user_command_option, get_default_subkeys,
@@ -20,18 +20,21 @@ class CustomCipher:
         block_size - The block size in bits (default=64)
         key - The main key used for encryption/decryption
         subkey_flag - A flag used to turn on subkey generation (default=True)
+        iv - A randomly generated 8-byte initialization vector for CBC mode (default=None)
         sub_keys - A list containing sub-keys
+        cache - A dictionary used to store the IV's for encryption/decryption in CBC mode
     """
     def __init__(self, key, mode=ECB, subkey_flag=True):
         print(INIT_MSG)
-        self.mode = mode  # Print config upon init
-        self.rounds = ROUNDS  # Print config upon init
-        self.block_size = BLOCK_SIZE  # Print config upon init
-        self.key = key  # Print config upon init
-        self.iv = None  # Print config upon init
-        self.subkey_flag = subkey_flag  # Print config upon init (TODO: can be altered in menu)
+        self.mode = mode
+        self.rounds = ROUNDS
+        self.block_size = BLOCK_SIZE
+        self.key = key
+        self.subkey_flag = subkey_flag
+        self.iv = None
         self.sub_keys = []
-        self.__process_subkey_generation()
+        # self.cache = {} TODO: Implement a memory-saving feature for managing different encrypted formats
+        self.process_subkey_generation()
         print(INIT_SUCCESS_MSG)
 
     def round_function(self, right_block: str, key: str):
@@ -186,11 +189,15 @@ class CustomCipher:
 
         return plaintext
 
-    def __process_subkey_generation(self):
+    def process_subkey_generation(self, menu_option=None):
         """
-        A helper function that generates sub-keys from a main key
-        if the subkey_flag is set to True; otherwise, prompts the
-        user to use default sub-keys or provides own sub-keys.
+        Generates sub-keys from a main key if the subkey_flag
+        is set to True; otherwise, prompts the user to use default
+        sub-keys or provide their own sub-keys.
+
+        @param menu_option:
+            An optional parameter used when function
+            is called by UserMenu class (default=None)
 
         @return: None
         """
@@ -222,15 +229,28 @@ class CustomCipher:
                 # b) XOR each byte of the shifted result with the round number
                 subkey = [(byte ^ (i + 1)) for byte in subkey]
                 self.sub_keys.append(''.join(chr(byte) for byte in subkey))
+
         print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
-        if self.subkey_flag:
-            generate_subkeys()
-        else:
-            command = get_user_command_option(opt_range=(1, 2))
-            if command == 1:
-                self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
-            if command == 2:
+        # a) Check if call is from UserMenu (to regenerate sub-keys)
+        if menu_option is not None:
+            self.sub_keys.clear()  # Clear existing sub-keys
+            if menu_option == 1:
+                generate_subkeys()
+            if menu_option == 2:
                 self.sub_keys = get_default_subkeys(DEFAULT_ROUND_KEYS)
+            if menu_option == 3:
+                self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
 
-        print(f"[+] OPERATION SUCCESSFUL: {self.rounds} sub-keys have been added!")
+        # b) Otherwise generate sub-keys based on subkey_flag
+        else:
+            if self.subkey_flag:
+                generate_subkeys()
+            else:
+                command = get_user_command_option(opt_range=(1, 2))
+                if command == 1:
+                    self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
+                if command == 2:
+                    self.sub_keys = get_default_subkeys(DEFAULT_ROUND_KEYS)
+
+        print(f"[+] OPERATION SUCCESSFUL: {self.rounds} new sub-keys have been added!")
