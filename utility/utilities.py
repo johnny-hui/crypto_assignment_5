@@ -1,9 +1,12 @@
 from typing import TextIO
+
 from prettytable import PrettyTable
-from utility.constants import GET_SUBKEY_USER_PROMPT, OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
+
+from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
-    USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS
+    USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
+    USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE
 
 
 def is_valid_key(key: str, block_size: int):
@@ -148,7 +151,7 @@ def decrypt_block(self: object, block: str):
     return right_half + left_half
 
 
-def get_user_command_option(opt_range: tuple):
+def get_user_command_option(opt_range: tuple, msg: str):
     """
     Prompts a user for a command option.
 
@@ -156,17 +159,20 @@ def get_user_command_option(opt_range: tuple):
         A tuple containing the minimum and maximum
         values for command options
 
+    @param msg:
+        A string representing the message (prompt) to be printed
+
     @return: command
     """
     while True:
         try:
-            command = int(input(GET_SUBKEY_USER_PROMPT))
+            command = int(input(msg))
             if command in opt_range:
                 break
             else:
                 print("[+] ERROR: Invalid command provided; please try again.")
-        except ValueError as e:
-            print(f"[+] ERROR: Invalid command provided; please try again ({e})")
+        except (ValueError, TypeError) as e:
+            print(f"[+] ERROR: Invalid option selected; please try again! ({e})")
     return command
 
 
@@ -372,6 +378,24 @@ def view_pending_operations(self: object):
         print(make_table(title=PENDING_OP_TITLE, columns=PENDING_OP_COLUMNS, content=content_list))
 
 
+def print_options(options: list):
+    """
+    Prints a list of options for the user.
+
+    @attention Use Case:
+        This function is only called by the UserViewModel class
+
+    @param options:
+        A list of options
+
+    @return: None
+    """
+    print('=' * 80)
+    for item in options:
+        print(item)
+    print('=' * 80)
+
+
 def encrypt(self: object, cipher: object):
     """
     Prompts the user on the type of encryption
@@ -390,37 +414,31 @@ def encrypt(self: object, cipher: object):
     @return: encrypted_object
         The encrypted object (user input, text file, or picture)
     """
-    for item in USER_ENCRYPT_OPTIONS:
-        print(item)
+    # Print options
+    print_options(options=USER_ENCRYPT_OPTIONS)
 
-    while True:
-        try:
-            option = int(input(USER_ENCRYPT_OPTIONS_PROMPT))
+    option = get_user_command_option(opt_range=tuple(range(len(USER_ENCRYPT_OPTIONS))),
+                                     msg=USER_ENCRYPT_OPTIONS_PROMPT)
+    if option == 0:  # Quit
+        return None
 
-            if option == 0:  # Quit
-                return None
+    if option == 1:  # For User Input (from stdin)
+        user_text = input(USER_ENCRYPT_INPUT_PROMPT)
+        ciphertext = cipher.encrypt(user_text)
+        if cipher.mode == ECB:
+            self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, None)
+        else:
+            self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, cipher.iv)
+        print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
+        return None
 
-            if option == 1:  # For User Input (from stdin)
-                user_text = input(USER_ENCRYPT_INPUT_PROMPT)
-                ciphertext = cipher.encrypt(user_text)
-                if cipher.mode == ECB:
-                    self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, None)
-                else:
-                    self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, cipher.iv)
-                print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
-                return None
+    if option == 2:  # For Text File
+        print("PLACEHOLDER")
+        return None
 
-            if option == 2:  # For Text File
-                print("PLACEHOLDER")
-                return None
-
-            if option == 3:  # For Picture (Bitmap)
-                print("PLACEHOLDER")
-                return None
-
-            print("[+] Invalid option selected; please try again!")
-        except (ValueError, TypeError) as e:
-            print(f"[+] Invalid option selected; please try again! ({e})")
+    if option == 3:  # For Picture (Bitmap)
+        print("PLACEHOLDER")
+        return None
 
 
 def decrypt(self: object, cipher: object):
@@ -441,4 +459,39 @@ def decrypt(self: object, cipher: object):
     @return: decrypted_object
         The decrypted object (user input, text file, or picture)
     """
-    print("PLACEHOLDER")
+    if len(self.pending_operations) == 0:
+        print("[+] DECRYPT ERROR: There are currently no pending operations to decrypt!")
+        return None
+
+    # Print operations and user options
+    view_pending_operations(self)
+    print_options(options=USER_DECRYPT_OPTIONS)
+
+    # Get user option
+    option = get_user_command_option(opt_range=tuple(range(len(USER_DECRYPT_OPTIONS))),
+                                     msg=USER_DECRYPT_OPTIONS_PROMPT)
+    try:
+        if option == 0:  # Quit
+            return None
+
+        if option == 1:  # User Input
+            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_USER_INPUT]  # Get item from dictionary
+
+            # Set cipher config
+            cipher.mode = mode.lower()
+            if cipher.mode == CBC:
+                cipher.iv = iv
+
+            # Perform decryption
+            plaintext = cipher.decrypt(ciphertext)
+            print(f"[+] OPERATION COMPLETED: The corresponding plaintext -> {plaintext}")
+            del self.pending_operations[CACHE_FORMAT_USER_INPUT]
+
+        if option == 2:
+            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_TEXT_FILE]
+
+        if option == 3:
+            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_PICTURE]
+
+    except KeyError:
+        print(f"[+] DECRYPT ERROR: The selected operation does not exist!; please try again")

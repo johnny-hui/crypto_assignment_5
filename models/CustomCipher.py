@@ -1,7 +1,7 @@
 import base64
 import secrets
 from utility.constants import (INIT_MSG, ROUNDS, BLOCK_SIZE, DEFAULT_ROUND_KEYS,
-                               OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG)
+                               OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG, GET_SUBKEY_USER_PROMPT)
 from utility.init import ECB, CBC
 from utility.utilities import (pad_block, encrypt_block, decrypt_block,
                                unpad_block, get_subkeys_from_user, get_user_command_option, get_default_subkeys,
@@ -246,7 +246,7 @@ class CustomCipher:
             if self.subkey_flag:
                 generate_subkeys()
             else:
-                command = get_user_command_option(opt_range=(1, 2))
+                command = get_user_command_option(opt_range=(1, 2), msg=GET_SUBKEY_USER_PROMPT)
                 if command == 1:
                     self.sub_keys = get_subkeys_from_user(self.block_size, self.rounds)
                 if command == 2:

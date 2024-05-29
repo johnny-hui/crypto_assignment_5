@@ -70,8 +70,7 @@ USER_ENCRYPT_INPUT_PROMPT = "[+] Please enter a plaintext string to encrypt: "
 
 
 # USER MENU - DECRYPTION
-USER_DECRYPT_INPUT_PROMPT = "[+] Please enter a ciphertext to decrypt: "
-USER_DECRYPT_OPTIONS_PROMPT = "[+] Please select an option for encryption: "
+USER_DECRYPT_OPTIONS_PROMPT = "[+] Please select an option for decryption: "
 USER_DECRYPT_OPTIONS = [
     "[+] Enter 0 - Exit",
     "[+] Enter 1 - Decrypt User Input",
