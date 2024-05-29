@@ -33,7 +33,6 @@ class CustomCipher:
         self.subkey_flag = subkey_flag
         self.iv = None
         self.sub_keys = []
-        # self.cache = {} TODO: Implement a memory-saving feature for managing different encrypted formats
         self.process_subkey_generation()
         print(INIT_SUCCESS_MSG)
 

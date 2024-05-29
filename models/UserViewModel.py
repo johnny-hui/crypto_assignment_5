@@ -4,21 +4,24 @@ from models.CustomCipher import CustomCipher
 from utility.constants import USER_INPUT_PROMPT, USER_MENU_TITLE, USER_MENU_COLUMNS, \
     MIN_MENU_ITEM_VALUE, MAX_MENU_ITEM_VALUE, USER_MENU_OPTIONS_LIST
 from utility.init import print_config
-from utility.utilities import get_user_menu_option, make_table, change_mode, change_main_key, regenerate_sub_keys
+from utility.utilities import get_user_menu_option, make_table, change_mode, change_main_key, regenerate_sub_keys, \
+    encrypt, view_pending_operations
 
 
-class UserMenu:
-    """ A class for an interactable user menu.
+class UserViewModel:
+    """A ViewModel class for an interactable user menu.
 
     Attributes:
         table - A table containing several user menu options
         cipher - A CustomCipher object
         terminate - A boolean for the termination of the application
+        pending_operations - A dictionary (cache) that stores pending operations for the current state
     """
     def __init__(self, *args):
         self.table = make_table(USER_MENU_TITLE, USER_MENU_COLUMNS, USER_MENU_OPTIONS_LIST)
         self.cipher = CustomCipher(key=args[0], mode=args[1], subkey_flag=args[2])
         self.terminate = False
+        self.pending_operations = {}  # Format => {Encrypted Format: (cipher_text or path_to_file, IV)}
 
     def start(self):
         """
@@ -62,7 +65,7 @@ class UserMenu:
                     command = get_user_menu_option(fd, MIN_MENU_ITEM_VALUE, MAX_MENU_ITEM_VALUE)
 
                     if command == 1:
-                        print("PLACEHOLDER")
+                        encrypt(self, self.cipher)
 
                     if command == 2:
                         print("PLACEHOLDER")
@@ -80,6 +83,9 @@ class UserMenu:
                         print_config(self.cipher)
 
                     if command == 7:
+                        view_pending_operations(self)
+
+                    if command == 8:
                         self.close_application()
                         return None
 

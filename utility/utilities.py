@@ -2,7 +2,8 @@ from typing import TextIO
 from prettytable import PrettyTable
 from utility.constants import GET_SUBKEY_USER_PROMPT, OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
-    CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT
+    CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
+    USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS
 
 
 def is_valid_key(key: str, block_size: int):
@@ -274,7 +275,7 @@ def change_mode(cipher: object):
     Toggles a change to the CustomCipher's mode.
 
     @attention: Use Case
-        This function is called by UserMenu class
+        This function is called by UserViewModel class
 
     @param cipher:
         A CustomCipher object
@@ -294,7 +295,7 @@ def change_main_key(cipher: object):
     the CustomCipher and replaces the old key.
 
     @attention: Use Case
-        This function is called by UserMenu class
+        This function is called by UserViewModel class
 
     @param cipher:
         A CustomCipher object
@@ -319,13 +320,16 @@ def regenerate_sub_keys(cipher: object):
     default sub-keys, or user-provided sub-keys.
 
     @attention: Use Case
-        This function is called by UserMenu class
+        This function is called by UserViewModel class
 
     @param cipher:
         A CustomCipher object
 
     @return: None
     """
+    for item in REGENERATE_SUBKEY_OPTIONS:
+        print(item)
+
     while True:
         try:
             option = int(input(REGENERATE_SUBKEY_PROMPT))
@@ -335,6 +339,106 @@ def regenerate_sub_keys(cipher: object):
                 cipher.process_subkey_generation(menu_option=option)
                 return None
             else:
-                print("[+] Invalid option selected; please enter a value from (0 to 3)")
+                print("[+] Invalid option selected; please try again!")
         except (ValueError, TypeError) as e:
             print(f"[+] Invalid option selected; please try again! ({e})")
+
+
+def view_pending_operations(self: object):
+    """
+    Prints the pending decryption operations that
+    are available to the user.
+
+    @attention Use Case:
+        This function is only called by the UserViewModel class
+
+    @attention Removal of Bytes in Ciphertext
+        This does not affect the original ciphertext saved, as this is
+        performed to make the ciphertext more presentable to the user.
+
+    @param self:
+        A reference to the calling class object (UserViewModel)
+
+    @return: None
+    """
+    if len(self.pending_operations) == 0:
+        print("[+] VIEW PENDING OPERATIONS: There are currently no pending operations!")
+        return None
+    else:
+        content_list = []
+        for key, (mode, ciphertext, iv) in self.pending_operations.items():
+            ciphertext = ''.join(char for char in ciphertext if char.isprintable())  # Remove bytes from ciphertext
+            content_list.append([key, mode, ciphertext, iv])
+        print(make_table(title=PENDING_OP_TITLE, columns=PENDING_OP_COLUMNS, content=content_list))
+
+
+def encrypt(self: object, cipher: object):
+    """
+    Prompts the user on the type of encryption
+    (user input, text file, or picture) and invokes
+    on the cipher object to perform the encryption.
+
+    @attention Use Case:
+        This function is only called by the UserViewModel class
+
+    @param self:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @return: encrypted_object
+        The encrypted object (user input, text file, or picture)
+    """
+    for item in USER_ENCRYPT_OPTIONS:
+        print(item)
+
+    while True:
+        try:
+            option = int(input(USER_ENCRYPT_OPTIONS_PROMPT))
+
+            if option == 0:  # Quit
+                return None
+
+            if option == 1:  # For User Input (from stdin)
+                user_text = input(USER_ENCRYPT_INPUT_PROMPT)
+                ciphertext = cipher.encrypt(user_text)
+                if cipher.mode == ECB:
+                    self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, None)
+                else:
+                    self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, cipher.iv)
+                print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
+                return None
+
+            if option == 2:  # For Text File
+                print("PLACEHOLDER")
+                return None
+
+            if option == 3:  # For Picture (Bitmap)
+                print("PLACEHOLDER")
+                return None
+
+            print("[+] Invalid option selected; please try again!")
+        except (ValueError, TypeError) as e:
+            print(f"[+] Invalid option selected; please try again! ({e})")
+
+
+def decrypt(self: object, cipher: object):
+    """
+    Prompts the user on the type of decryption
+    (user input, text file, or picture) and invokes
+    on the cipher object to perform the decryption.
+
+    @attention Use Case:
+        This function is only called by the UserViewModel class
+
+    @param self:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @return: decrypted_object
+        The decrypted object (user input, text file, or picture)
+    """
+    print("PLACEHOLDER")
