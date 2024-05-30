@@ -67,6 +67,7 @@ USER_ENCRYPT_OPTIONS = [
     "[+] Enter 3 - Encrypt a Picture (Bitmap only)",
 ]
 USER_ENCRYPT_INPUT_PROMPT = "[+] Please enter a plaintext string to encrypt: "
+USER_ENCRYPT_FILE_PATH_PROMPT = "[+] Please enter the path of the text file to encrypt: "
 
 
 # USER MENU - DECRYPTION
@@ -76,6 +77,7 @@ USER_DECRYPT_OPTIONS = [
     "[+] Enter 1 - Decrypt User Input",
     "[+] Enter 2 - Decrypt a Text File",
     "[+] Enter 3 - Decrypt a Picture (Bitmap only)",
+    "[+] Enter 4 - Manually Decrypt a File",
 ]
 
 

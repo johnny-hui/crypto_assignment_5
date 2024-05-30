@@ -1,4 +1,3 @@
-import base64
 import secrets
 from utility.constants import (INIT_MSG, ROUNDS, BLOCK_SIZE, DEFAULT_ROUND_KEYS,
                                OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG, GET_SUBKEY_USER_PROMPT)
@@ -118,25 +117,18 @@ class CustomCipher:
         if self.mode == CBC:
             print("[+] CBC ENCRYPTION: Now encrypting plaintext in CBC mode...")
 
-            # Generate a random initialization vector (IV)
-            self.iv = base64.b64encode(secrets.token_bytes(self.block_size)).decode()
-            previous_block = self.iv
+            self.iv = secrets.token_bytes(self.block_size)  # Generate IV of block size
+            previous_block = self.iv.decode('latin-1')  # Use 'latin-1' encoding (ensures each char is a value 0-255)
 
-            # Partition the plaintext into blocks and encrypt each block
             for i in range(0, len(plaintext), self.block_size):
                 block = plaintext[i:i + self.block_size]
-
-                if len(block) < self.block_size:  # Pad block to 64
+                if len(block) < self.block_size:  # Pad if necessary
                     block = pad_block(self.block_size, block)
 
-                # XOR with the previous ciphertext block
-                block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, block))
-
-                # Encrypt the block
-                ciphertext += encrypt_block(self, block)
-
-                # Set previous block to new ciphertext block
-                previous_block = ciphertext
+                block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, block))  # XOR with previous block
+                encrypted_block = encrypt_block(self, block)
+                ciphertext += encrypted_block
+                previous_block = encrypted_block
 
         return ciphertext
 
@@ -167,21 +159,19 @@ class CustomCipher:
                 plaintext += plaintext_block
 
         if self.mode == CBC:
-            print("[+] CBC DECRYPTION: Now decrypting plaintext in CBC mode...")
-            previous_block = self.iv
+            print("[+] CBC DECRYPTION: Now decrypting ciphertext in CBC mode...")
 
-            # Partition the ciphertext into blocks and decrypt each block
+            # Get IV from class
+            previous_block = self.iv.decode('latin-1')
+
             for i in range(0, len(ciphertext), self.block_size):
                 block = ciphertext[i:i + self.block_size]
                 decrypted_block = decrypt_block(self, block)
-
-                # XOR with previous block
                 plaintext_block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, decrypted_block))
                 plaintext += plaintext_block
                 previous_block = block
 
-            # Reset IV for next encryption
-            self.iv = None
+            self.iv = None  # Reset IV for next encryption
 
         if len(plaintext) % self.block_size == 0:
             plaintext = unpad_block(plaintext)

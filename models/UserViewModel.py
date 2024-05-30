@@ -74,10 +74,10 @@ class UserViewModel:
                         change_mode(self.cipher)
 
                     if command == 4:
-                        change_main_key(self.cipher)
+                        change_main_key(self, self.cipher)
 
                     if command == 5:
-                        regenerate_sub_keys(self.cipher)
+                        regenerate_sub_keys(self, self.cipher)
 
                     if command == 6:
                         print_config(self.cipher)

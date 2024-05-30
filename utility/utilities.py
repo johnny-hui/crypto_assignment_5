@@ -1,3 +1,4 @@
+import os
 from typing import TextIO
 
 from prettytable import PrettyTable
@@ -6,7 +7,8 @@ from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
     USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
-    USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE
+    USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE, \
+    USER_ENCRYPT_FILE_PATH_PROMPT
 
 
 def is_valid_key(key: str, block_size: int):
@@ -295,7 +297,7 @@ def change_mode(cipher: object):
     print(f"[+] MODE CHANGED TO -> {cipher.mode.upper()}")
 
 
-def change_main_key(cipher: object):
+def change_main_key(self: object, cipher: object):
     """
     Prompts the user for a new main key for
     the CustomCipher and replaces the old key.
@@ -303,11 +305,18 @@ def change_main_key(cipher: object):
     @attention: Use Case
         This function is called by UserViewModel class
 
+    @param self:
+        A reference to the calling class object (UserViewModel)
+
     @param cipher:
         A CustomCipher object
 
     @return: None
     """
+    if len(self.pending_operations) > 0:
+        print("[+] CHANGE KEY ERROR: Cannot change main key since there are pending decryption operations!")
+        return None
+
     while True:
         key = input(CHANGE_KEY_PROMPT)
         if key == 'q':
@@ -320,7 +329,7 @@ def change_main_key(cipher: object):
             return None
 
 
-def regenerate_sub_keys(cipher: object):
+def regenerate_sub_keys(self: object, cipher: object):
     """
     Regenerates sub-keys by using either the main key,
     default sub-keys, or user-provided sub-keys.
@@ -328,11 +337,19 @@ def regenerate_sub_keys(cipher: object):
     @attention: Use Case
         This function is called by UserViewModel class
 
+    @param self:
+        A reference to the calling class object (UserViewModel)
+
     @param cipher:
         A CustomCipher object
 
     @return: None
     """
+    if len(self.pending_operations) > 0:
+        print("[+] CHANGE KEY ERROR: Cannot change main key because there are pending decryption operations!")
+        return None
+
+    # Print options
     for item in REGENERATE_SUBKEY_OPTIONS:
         print(item)
 
@@ -350,7 +367,7 @@ def regenerate_sub_keys(cipher: object):
             print(f"[+] Invalid option selected; please try again! ({e})")
 
 
-def view_pending_operations(self: object):
+def view_pending_operations(UserViewModel: object):
     """
     Prints the pending decryption operations that
     are available to the user.
@@ -362,17 +379,17 @@ def view_pending_operations(self: object):
         This does not affect the original ciphertext saved, as this is
         performed to make the ciphertext more presentable to the user.
 
-    @param self:
+    @param UserViewModel:
         A reference to the calling class object (UserViewModel)
 
     @return: None
     """
-    if len(self.pending_operations) == 0:
+    if len(UserViewModel.pending_operations) == 0:
         print("[+] VIEW PENDING OPERATIONS: There are currently no pending operations!")
         return None
     else:
         content_list = []
-        for key, (mode, ciphertext, iv) in self.pending_operations.items():
+        for key, (mode, ciphertext, iv) in UserViewModel.pending_operations.items():
             ciphertext = ''.join(char for char in ciphertext if char.isprintable())  # Remove bytes from ciphertext
             content_list.append([key, mode, ciphertext, iv])
         print(make_table(title=PENDING_OP_TITLE, columns=PENDING_OP_COLUMNS, content=content_list))
@@ -396,7 +413,109 @@ def print_options(options: list):
     print('=' * 80)
 
 
-def encrypt(self: object, cipher: object):
+def read_file(file_path: str):
+    """
+    Opens a text file and reads the contents
+    of the file.
+
+    @param file_path:
+        A string for the text file path
+
+    @return: contents
+        A string containing the contents of the text file (None if error)
+    """
+    if not file_path.endswith('.txt'):
+        print("[+] FILE FORMAT ERROR: Only text (.txt) files are supported!")
+        return None
+    try:
+        with open(file_path, 'rb') as file:
+            return file.read().decode('latin-1')
+    except FileNotFoundError:
+        print("[+] READ FILE ERROR: File not found in path provided ({})".format(file_path))
+
+
+def write_file(file_path: str, data: str):
+    """
+    Opens a text file and returns the
+    contents of the file (as a string).
+
+    @param file_path:
+        A string for the text file path
+
+    @param data:
+        A string containing data to be written to file
+
+    @return: None
+    """
+    try:
+        with open(file_path, 'wb') as file:
+            file.write(data.encode('latin-1'))
+        print(f"[+] OPERATION COMPLETED: The file has been successfully decrypted and saved "
+              f"to '{file_path}'")
+    except IOError as e:
+        print(f"[+] WRITE FILE ERROR: An error occurred while writing to the file {file_path}: {e}")
+
+
+def modify_save_path(file_path: str, tag: str, mode: str):
+    """
+    Modifies the original file path and name to denote
+    the newly encrypted or decrypted file.
+
+    @param file_path:
+        A string containing the original file path
+
+    @param tag:
+        A string containing the tag for the new path
+        ('_encrypted' or '_decrypted')
+
+    @param mode:
+        A string containing the cipher mode
+
+    @return: new_save_path
+        A string containing the new file path and name
+    """
+    directory, filename = os.path.split(file_path)
+
+    if tag == "_decrypted.txt":  # => For decryption
+        new_file_name = filename.replace("encrypted", "decrypted")
+    else:
+        new_file_name = filename.split('.')[0] + '_' + mode + tag
+
+    new_save_path = os.path.join(directory, new_file_name)
+    return new_save_path
+
+
+def save_to_pending_operations(UserViewModel: object, cipher: object, format: str, payload: str):
+    """
+    Saves the cipher parameters from a single encrypted operation
+    for future decryption operation.
+
+    @attention Use Case:
+        This function is only called by the UserViewModel class
+
+    @param UserViewModel:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @param format:
+        A string denoting the payload's format (user input, text file
+        or picture)
+
+    @param payload:
+        A string containing the payload (input or file path
+        of .txt file/picture)
+
+    @return: None
+    """
+    if cipher.mode == ECB:
+        UserViewModel.pending_operations[format] = (cipher.mode.upper(), payload, None)
+    else:
+        UserViewModel.pending_operations[format] = (cipher.mode.upper(), payload, cipher.iv)
+
+
+def encrypt(UserViewModel: object, cipher: object):
     """
     Prompts the user on the type of encryption
     (user input, text file, or picture) and invokes
@@ -405,7 +524,7 @@ def encrypt(self: object, cipher: object):
     @attention Use Case:
         This function is only called by the UserViewModel class
 
-    @param self:
+    @param UserViewModel:
         A reference to the calling class object (UserViewModel)
 
     @param cipher:
@@ -423,25 +542,16 @@ def encrypt(self: object, cipher: object):
         return None
 
     if option == 1:  # For User Input (from stdin)
-        user_text = input(USER_ENCRYPT_INPUT_PROMPT)
-        ciphertext = cipher.encrypt(user_text)
-        if cipher.mode == ECB:
-            self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, None)
-        else:
-            self.pending_operations[CACHE_FORMAT_USER_INPUT] = (cipher.mode.upper(), ciphertext, cipher.iv)
-        print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
-        return None
+        _perform_user_input_operation(UserViewModel, cipher, operation=OP_ENCRYPT)
 
     if option == 2:  # For Text File
-        print("PLACEHOLDER")
-        return None
+        _perform_text_file_operation(UserViewModel, cipher, operation=OP_ENCRYPT)
 
     if option == 3:  # For Picture (Bitmap)
         print("PLACEHOLDER")
-        return None
 
 
-def decrypt(self: object, cipher: object):
+def decrypt(UserViewModel: object, cipher: object):
     """
     Prompts the user on the type of decryption
     (user input, text file, or picture) and invokes
@@ -450,7 +560,7 @@ def decrypt(self: object, cipher: object):
     @attention Use Case:
         This function is only called by the UserViewModel class
 
-    @param self:
+    @param UserViewModel:
         A reference to the calling class object (UserViewModel)
 
     @param cipher:
@@ -459,12 +569,8 @@ def decrypt(self: object, cipher: object):
     @return: decrypted_object
         The decrypted object (user input, text file, or picture)
     """
-    if len(self.pending_operations) == 0:
-        print("[+] DECRYPT ERROR: There are currently no pending operations to decrypt!")
-        return None
-
     # Print operations and user options
-    view_pending_operations(self)
+    view_pending_operations(UserViewModel)
     print_options(options=USER_DECRYPT_OPTIONS)
 
     # Get user option
@@ -475,23 +581,97 @@ def decrypt(self: object, cipher: object):
             return None
 
         if option == 1:  # User Input
-            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_USER_INPUT]  # Get item from dictionary
+            _perform_user_input_operation(UserViewModel, cipher, operation=OP_DECRYPT)
 
-            # Set cipher config
+        if option == 2:  # Text File
+            _perform_text_file_operation(UserViewModel, cipher, operation=OP_DECRYPT)
+
+        if option == 3:  # Picture
+            mode, ciphertext, iv = UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
+
+        if option == 4:  # TODO: Manually decrypt any file (user-specified path)
+            # FIRST, check if file exists
+            # SECOND, check if file is encrypted with this application (based on the new file name)
+            # THIRD: User must provide all subkeys, the mode, and the IV (if CBC)
+            print("PLACEHOLDER")
+
+    except KeyError:
+        print(f"[+] DECRYPT ERROR: The selected operation does not exist; please try again")
+
+
+def _perform_user_input_operation(UserViewModel: object, cipher: object, operation: str):
+    """
+    A helper function that performs encryption or
+    decryption operations on user input (stdin).
+
+    @param UserViewModel:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @param operation:
+        A string to designate an ENCRYPTION or DECRYPTION operation
+
+    @return: None
+    """
+    if operation == OP_ENCRYPT:
+        user_text = input(USER_ENCRYPT_INPUT_PROMPT)
+        ciphertext = cipher.encrypt(user_text)
+        save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_USER_INPUT, payload=ciphertext)
+        print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
+
+    if operation == OP_DECRYPT:
+        # Get cipher data from pending_operations
+        mode, ciphertext, iv = UserViewModel.pending_operations[CACHE_FORMAT_USER_INPUT]
+
+        # Set cipher config
+        cipher.mode = mode.lower()
+        if cipher.mode == CBC:
+            cipher.iv = iv
+
+        # Perform decryption
+        plaintext = cipher.decrypt(ciphertext)
+        print(f"[+] OPERATION COMPLETED: The corresponding plaintext -> {plaintext}")
+        del UserViewModel.pending_operations[CACHE_FORMAT_USER_INPUT]
+
+
+def _perform_text_file_operation(UserViewModel: object, cipher: object, operation: str):
+    """
+    A helper function that performs encryption or
+    decryption operations on a text file.
+
+    @param UserViewModel:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @param operation:
+        A string to designate an ENCRYPTION or DECRYPTION operation
+
+    @return: None
+    """
+    if operation == OP_ENCRYPT:
+        file_path = input(USER_ENCRYPT_FILE_PATH_PROMPT)
+
+        # Open file, get contents, encrypt and save file to path
+        plaintext_content = read_file(file_path)
+        if plaintext_content is not None:
+            ciphertext = cipher.encrypt(plaintext_content)
+            new_save_path = modify_save_path(file_path, tag="_encrypted.txt", mode=cipher.mode)
+            save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_TEXT_FILE, payload=new_save_path)
+            write_file(new_save_path, ciphertext)
+
+    if operation == OP_DECRYPT:
+        mode, file_path, iv = UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
+        encrypted_content = read_file(file_path)
+
+        if encrypted_content is not None:
             cipher.mode = mode.lower()
             if cipher.mode == CBC:
                 cipher.iv = iv
-
-            # Perform decryption
-            plaintext = cipher.decrypt(ciphertext)
-            print(f"[+] OPERATION COMPLETED: The corresponding plaintext -> {plaintext}")
-            del self.pending_operations[CACHE_FORMAT_USER_INPUT]
-
-        if option == 2:
-            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_TEXT_FILE]
-
-        if option == 3:
-            mode, ciphertext, iv = self.pending_operations[CACHE_FORMAT_PICTURE]
-
-    except KeyError:
-        print(f"[+] DECRYPT ERROR: The selected operation does not exist!; please try again")
+            plaintext = cipher.decrypt(encrypted_content)
+            new_save_path = modify_save_path(file_path, tag="_decrypted.txt", mode=cipher.mode)
+            write_file(new_save_path, plaintext)
+            del UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
