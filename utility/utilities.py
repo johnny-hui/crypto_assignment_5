@@ -1,6 +1,8 @@
 """
 Description:
-This Python file contains utility functions used by the "models".
+This Python file contains utility functions used by the models in
+the "models" directory.
+
 """
 import os
 from typing import TextIO
@@ -10,7 +12,7 @@ from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
     USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
     USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE, \
-    USER_ENCRYPT_FILE_PATH_PROMPT
+    USER_ENCRYPT_FILE_PATH_PROMPT, INIT_CONFIG_ATTRIBUTES, INIT_CONFIG_TITLE, INIT_CONFIG_COLUMNS
 
 
 def is_valid_key(key: str, block_size: int):
@@ -345,6 +347,36 @@ def change_main_key(UserViewModel: object, cipher: object):
             print("[+] HINT: To generate sub-keys with this new main key, perform the "
                   "'Regenerate Sub-keys' command in menu")
             return None
+
+
+def print_config(self: object):
+    """
+    Prints the cipher's configuration.
+
+    @attention Use Case:
+        Used only by CustomCipher class
+
+    @param self:
+        A reference to the calling class object
+
+    @return: None
+    """
+    # Initialize Variables
+    content = []
+    attributes = vars(self)  # Get object attributes
+    index = 0
+
+    # Iterate through cipher configuration and put into a list for table
+    for _, value in attributes.items():
+        if index == 0:
+            content.append([INIT_CONFIG_ATTRIBUTES[index], value.upper()])
+        else:
+            content.append([INIT_CONFIG_ATTRIBUTES[index], value])
+        index += 1
+
+    # Print config
+    print("=" * 160)
+    print(make_table(title=INIT_CONFIG_TITLE, columns=INIT_CONFIG_COLUMNS, content=content))
 
 
 def regenerate_sub_keys(UserViewModel: object, cipher: object):

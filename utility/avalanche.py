@@ -1,6 +1,7 @@
 """
 Description:
 This Python file contains functions to generate data (graphs) and perform avalanche analysis.
+
 """
 import os
 import secrets
