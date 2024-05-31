@@ -405,7 +405,7 @@ def _perform_avalanche_spac(UserViewModel: object, criteria: str, option: int,
         plaintext_binary = string_to_binary(plaintext)
         print(f"[+] Now performing avalanche analysis ({criteria}) on the following plaintext -> {plaintext}")
 
-    # 2 - Generate random plaintext string
+    # Option 2 - Generate random plaintext string
     else:
         plaintext = generate_random_string(cipher.block_size)
         plaintext_binary = string_to_binary(plaintext)
@@ -463,7 +463,7 @@ def _perform_avalanche_skac(UserViewModel: object, criteria: str, option: int,
         plaintext = get_avalanche_user_input(cipher.block_size, input_type="plaintext")
         print(f"[+] Now performing avalanche analysis ({criteria}) with the following initial key -> {key}")
 
-    # 2 - Generate key
+    # Option 2 - Generate key
     else:
         key = generate_random_string(cipher.block_size)
         plaintext = generate_random_string(cipher.block_size)

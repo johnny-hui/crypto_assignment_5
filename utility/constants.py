@@ -69,6 +69,7 @@ USER_ENCRYPT_OPTIONS = [
 ]
 USER_ENCRYPT_INPUT_PROMPT = "[+] Please enter a plaintext string to encrypt: "
 USER_ENCRYPT_FILE_PATH_PROMPT = "[+] Please enter the path of the text file to encrypt: "
+USER_ENCRYPT_IMAGE_PATH_PROMPT = "[+] Please enter the path of the image file to encrypt: "
 
 
 # USER MENU - DECRYPTION

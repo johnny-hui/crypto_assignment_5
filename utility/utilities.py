@@ -12,7 +12,8 @@ from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
     USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
     USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE, \
-    USER_ENCRYPT_FILE_PATH_PROMPT, INIT_CONFIG_ATTRIBUTES, INIT_CONFIG_TITLE, INIT_CONFIG_COLUMNS
+    USER_ENCRYPT_FILE_PATH_PROMPT, INIT_CONFIG_ATTRIBUTES, INIT_CONFIG_TITLE, INIT_CONFIG_COLUMNS, \
+    USER_ENCRYPT_IMAGE_PATH_PROMPT
 
 
 def is_valid_key(key: str, block_size: int):
@@ -436,7 +437,6 @@ def view_pending_operations(UserViewModel: object):
     """
     if len(UserViewModel.pending_operations) == 0:
         print("[+] VIEW PENDING OPERATIONS: There are currently no pending operations!")
-        return None
     else:
         content_list = []
         for key, (mode, ciphertext, iv) in UserViewModel.pending_operations.items():
@@ -463,7 +463,7 @@ def print_options(options: list):
     print('=' * 80)
 
 
-def read_file(file_path: str):
+def read_text_file(file_path: str):
     """
     Opens a text file and reads the contents
     of the file.
@@ -484,7 +484,7 @@ def read_file(file_path: str):
         print("[+] READ FILE ERROR: File not found in path provided ({})".format(file_path))
 
 
-def write_file(file_path: str, data: str):
+def write_to_text_file(file_path: str, data: str):
     """
     Opens a text file and returns the
     contents of the file (as a string).
@@ -506,7 +506,73 @@ def write_file(file_path: str, data: str):
         print(f"[+] WRITE FILE ERROR: An error occurred while writing to the file {file_path}: {e}")
 
 
-def modify_save_path(file_path: str, tag: str, mode: str):
+def read_image(file_path: str):
+    """
+    Opens the image file, validates if it is a
+    bitmap (.bmp) file and reads the contents
+    in bytes.
+
+    @param file_path:
+        A string containing the path to the image
+
+    @return: (header, data)
+        The header of the .bmp image and data (Bytes)
+    """
+    def is_bitmap(img_path: str):
+        """
+        Opens the image file and checks if it
+        is in bitmap (.bmp) format.
+
+        @param img_path:
+            A string containing the path to the bitmap
+            image
+
+        @return: Boolean (T/F)
+            True if the image is in bitmap, False otherwise
+        """
+        with open(img_path, 'rb') as file:
+            header = file.read(2)
+            return header == b'BM'
+    try:
+        if is_bitmap(file_path):
+            with open(file_path, 'rb') as f:
+                header = f.read(54)  # BMP header is 54 bytes
+                data = f.read()
+            return header, data
+        print("[+] IMAGE FILE ERROR: The image provided is not in bitmap (.bmp) format!")
+        return None, None
+    except FileNotFoundError:
+        print(f"[+] IMAGE FILE ERROR: The image not found in path provided ({file_path})")
+        return None, None
+
+
+def write_image(img_path: str, header: bytes, data: bytes):
+    """
+    Creates an image file at the specified path, and writes
+    data to the file.
+
+    @param img_path:
+        A string containing the path to the image
+
+    @param header:
+        The header of the .bmp image (Bytes)
+
+    @param data:
+        The data to be written to the file (Bytes)
+
+    @return: None
+    """
+    try:
+        with open(img_path, 'wb') as f:
+            f.write(header)
+            f.write(data)
+        print(f"[+] OPERATION COMPLETED: The file has been successfully decrypted and saved "
+              f"to '{img_path}'")
+    except IOError as e:
+        print(f"[+] WRITE IMAGE ERROR: An error occurred while writing to the file ({img_path}): {e}")
+
+
+def modify_save_path(file_path: str, tag: str, mode: str, format: str):
     """
     Modifies the original file path and name to denote
     the newly encrypted or decrypted file.
@@ -521,15 +587,26 @@ def modify_save_path(file_path: str, tag: str, mode: str):
     @param mode:
         A string containing the cipher mode
 
+    @param format:
+        A string denoting the file format
+
     @return: new_save_path
         A string containing the new file path and name
     """
     directory, filename = os.path.split(file_path)
+    new_file_name = ""
 
-    if tag == "_decrypted.txt":  # => For decryption
-        new_file_name = filename.replace("encrypted", "decrypted")
-    else:
-        new_file_name = filename.split('.')[0] + '_' + mode + tag
+    if format == "PICTURE":
+        if tag == "_decrypted.bmp":  # => For decryption
+            new_file_name = filename.replace("encrypted", "decrypted")
+        else:
+            new_file_name = filename.split('.')[0] + '_' + mode + tag
+
+    if format == "TEXT":
+        if tag == "_decrypted.txt":  # => For decryption
+            new_file_name = filename.replace("encrypted", "decrypted")
+        else:
+            new_file_name = filename.split('.')[0] + '_' + mode + tag
 
     new_save_path = os.path.join(directory, new_file_name)
     return new_save_path
@@ -598,7 +675,7 @@ def encrypt(UserViewModel: object, cipher: object):
         _perform_text_file_operation(UserViewModel, cipher, operation=OP_ENCRYPT)
 
     if option == 3:  # For Picture (Bitmap)
-        print("PLACEHOLDER")
+        __perform_image_operation(UserViewModel, cipher, operation=OP_ENCRYPT)
 
 
 def decrypt(UserViewModel: object, cipher: object):
@@ -621,6 +698,8 @@ def decrypt(UserViewModel: object, cipher: object):
     """
     # Print operations and user options
     view_pending_operations(UserViewModel)
+
+    # Print user options
     print_options(options=USER_DECRYPT_OPTIONS)
 
     # Get user option
@@ -637,7 +716,7 @@ def decrypt(UserViewModel: object, cipher: object):
             _perform_text_file_operation(UserViewModel, cipher, operation=OP_DECRYPT)
 
         if option == 3:  # Picture
-            mode, ciphertext, iv = UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
+            __perform_image_operation(UserViewModel, cipher, operation=OP_DECRYPT)
 
     except KeyError:
         print(f"[+] DECRYPT ERROR: The selected operation does not exist; please try again")
@@ -700,22 +779,64 @@ def _perform_text_file_operation(UserViewModel: object, cipher: object, operatio
         file_path = input(USER_ENCRYPT_FILE_PATH_PROMPT)
 
         # Open file, get contents, encrypt and save file to path
-        plaintext_content = read_file(file_path)
+        plaintext_content = read_text_file(file_path)
         if plaintext_content is not None:
             ciphertext = cipher.encrypt(plaintext_content)
-            new_save_path = modify_save_path(file_path, tag="_encrypted.txt", mode=cipher.mode)
+            new_save_path = modify_save_path(file_path, tag="_encrypted.txt", mode=cipher.mode, format=CACHE_FORMAT_TEXT_FILE)
             save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_TEXT_FILE, payload=new_save_path)
-            write_file(new_save_path, ciphertext)
+            write_to_text_file(new_save_path, ciphertext)
 
     if operation == OP_DECRYPT:
         mode, file_path, iv = UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
-        encrypted_content = read_file(file_path)
+        encrypted_content = read_text_file(file_path)
 
         if encrypted_content is not None:
             cipher.mode = mode.lower()
             if cipher.mode == CBC:
                 cipher.iv = iv
             plaintext = cipher.decrypt(encrypted_content)
-            new_save_path = modify_save_path(file_path, tag="_decrypted.txt", mode=cipher.mode)
-            write_file(new_save_path, plaintext)
+            new_save_path = modify_save_path(file_path, tag="_decrypted.txt", mode=cipher.mode, format=CACHE_FORMAT_TEXT_FILE)
+            write_to_text_file(new_save_path, plaintext)
             del UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
+
+
+def __perform_image_operation(UserViewModel: object, cipher: object, operation: str):
+    """
+    A helper function that performs encryption or
+    decryption operations on an image bitmap file.
+
+    @param UserViewModel:
+        A reference to the calling class object (UserViewModel)
+
+    @param cipher:
+        A CustomCipher object
+
+    @param operation:
+        A string to designate an ENCRYPTION or DECRYPTION operation
+
+    @return: None
+    """
+    if operation == OP_ENCRYPT:
+        img_path = input(USER_ENCRYPT_IMAGE_PATH_PROMPT)
+
+        # Open image, get bytes, encrypt and save encrypted image to path
+        header, image_data = read_image(img_path)
+        if header is not None and image_data is not None:
+            encrypted_data = cipher.encrypt(image_data.decode('latin-1'))
+            new_save_path = modify_save_path(img_path, tag="_encrypted.bmp", mode=cipher.mode, format=CACHE_FORMAT_PICTURE)
+            save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_PICTURE, payload=new_save_path)
+            write_image(new_save_path, header, encrypted_data.encode('latin-1'))
+
+    if operation == OP_DECRYPT:
+        mode, file_path, iv = UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
+        header, encrypted_data = read_image(file_path)
+
+        # Open image, get bytes, decrypt and save decrypted image to path
+        if header is not None and encrypted_data is not None:
+            cipher.mode = mode.lower()
+            if cipher.mode == CBC:
+                cipher.iv = iv
+            decrypted_data = cipher.decrypt(encrypted_data.decode('latin-1'))
+            new_save_path = modify_save_path(file_path, tag="_decrypted.bmp", mode=cipher.mode, format=CACHE_FORMAT_PICTURE)
+            write_image(new_save_path, header, decrypted_data.encode('latin-1'))
+            del UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
