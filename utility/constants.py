@@ -29,12 +29,13 @@ USER_MENU_COLUMNS = ["Option", "Command"]
 USER_MENU_OPTIONS_LIST = [
     ["1", "Perform Encryption"],
     ["2", "Perform Decryption"],
-    ["3", "Change Mode"],
-    ["4", "Change Main Key"],
-    ["5", "Regenerate Sub-keys"],
-    ["6", "View Cipher Settings"],
-    ["7", "View Pending Operations"],
-    ["8", "Close Application"],
+    ["3", "Perform Avalanche Analysis"],
+    ["4", "Change Mode"],
+    ["5", "Change Main Key"],
+    ["6", "Regenerate Sub-keys"],
+    ["7", "View Cipher Settings"],
+    ["8", "View Pending Operations"],
+    ["9", "Close Application"],
 ]
 USER_INPUT_PROMPT = "[+] Select a menu option: "
 INVALID_MENU_SELECTION = "[+] MENU SELECTION: Please enter a valid menu option ({} to {}): "
@@ -76,9 +77,17 @@ USER_DECRYPT_OPTIONS = [
     "[+] Enter 0 - Exit",
     "[+] Enter 1 - Decrypt User Input",
     "[+] Enter 2 - Decrypt a Text File",
-    "[+] Enter 3 - Decrypt a Picture (Bitmap only)",
-    "[+] Enter 4 - Manually Decrypt a File",
+    "[+] Enter 3 - Decrypt a Picture (Bitmap only)"
 ]
+
+
+# AVALANCHE ANALYSIS
+AVALANCHE_ANALYSIS_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own plaintext message (64-bit or 8 char only)"
+                             "; Enter 2 to use generated plaintext message; or (Enter 0 to quit): ")
+AVALANCHE_ANALYSIS_USER_INPUT = "[+] Enter a plaintext message (8 characters only): "
+AVALANCHE_TASK_SPAC_TITLE = "Encryption {} Bit Change in Plaintext (SPAC) - [Starting from MSB]"
+AVALANCHE_TASK_SKAC_TITLE = ("Encrypting Ciphertext after {} Bit Changes in Key (SKAC) - {} 4th Bit Position "
+                             "[Starting from MSB]")
 
 
 # OTHER CONSTANTS
@@ -86,3 +95,5 @@ OP_ENCRYPT = "ENCRYPTION"
 OP_DECRYPT = "DECRYPTION"
 NO_SUBKEYS_ENCRYPT_MSG = "[+] ENCRYPT ERROR: There are no sub-keys provided!"
 NO_SUBKEYS_DECRYPT_MSG = "[+] DECRYPT ERROR: There are no sub-keys provided!"
+
+

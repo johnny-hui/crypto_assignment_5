@@ -1,6 +1,7 @@
 import select
 import sys
 from models.CustomCipher import CustomCipher
+from utility.avalanche import analyze_avalanche_effect
 from utility.constants import USER_INPUT_PROMPT, USER_MENU_TITLE, USER_MENU_COLUMNS, \
     MIN_MENU_ITEM_VALUE, MAX_MENU_ITEM_VALUE, USER_MENU_OPTIONS_LIST
 from utility.init import print_config
@@ -16,12 +17,14 @@ class UserViewModel:
         cipher - A CustomCipher object
         terminate - A boolean for the termination of the application
         pending_operations - A dictionary (cache) that stores pending operations for the current state
+        cipher_state - A list to store the cipher state (used for avalanche analysis (SKAC) key changes)
     """
     def __init__(self, *args):
         self.table = make_table(USER_MENU_TITLE, USER_MENU_COLUMNS, USER_MENU_OPTIONS_LIST)
         self.cipher = CustomCipher(key=args[0], mode=args[1], subkey_flag=args[2])
         self.terminate = False
         self.pending_operations = {}  # Format => {Encrypted_Format: (mode, cipher_text/path_to_file, IV)}
+        self.cipher_state = []  # TODO: Used for avalanche effect if SKAC (used to revert if key and subkey changes)
 
     def start(self):
         """
@@ -43,6 +46,21 @@ class UserViewModel:
         print("[+] CLOSE APPLICATION: Now closing the application...")
         self.terminate = True
         print("[+] APPLICATION CLOSED: Application has been successfully terminated!")
+
+    def save_cipher_state(self):
+        """
+        Saves the cipher's state (class attributes)
+        by putting the cipher's configurations into
+        a cache (list).
+
+        @attention Use Case:
+            This function is only used for avalanche analysis
+            (SKAC) when the bits of the main key change.
+
+        @return: None
+        """
+        for attribute in vars(self.cipher).values():
+            self.cipher_state.append(attribute)
 
     def __menu(self):
         """
@@ -71,21 +89,24 @@ class UserViewModel:
                         decrypt(self, self.cipher)
 
                     if command == 3:
-                        change_mode(self.cipher)
+                        analyze_avalanche_effect(self, self.cipher)
 
                     if command == 4:
-                        change_main_key(self, self.cipher)
+                        change_mode(self.cipher)
 
                     if command == 5:
-                        regenerate_sub_keys(self, self.cipher)
+                        change_main_key(self, self.cipher)
 
                     if command == 6:
-                        print_config(self.cipher)
+                        regenerate_sub_keys(self, self.cipher)
 
                     if command == 7:
-                        view_pending_operations(self)
+                        print_config(self.cipher)
 
                     if command == 8:
+                        view_pending_operations(self)
+
+                    if command == 9:
                         self.close_application()
                         return None
 

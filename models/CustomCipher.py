@@ -16,13 +16,14 @@ class CustomCipher:
     Attributes:
         mode - The encryption mode of the cipher (default=ECB)
         rounds - The number of rounds the cipher should run (default=8)
-        block_size - The block size in bits (default=64)
+        block_size - The block size in bytes (default=8)
         key - The main key used for encryption/decryption
         subkey_flag - A flag used to turn on subkey generation (default=True)
         iv - A randomly generated 8-byte initialization vector for CBC mode (default=None)
         sub_keys - A list containing sub-keys
         cache - A dictionary used to store the IV's for encryption/decryption in CBC mode
     """
+
     def __init__(self, key, mode=ECB, subkey_flag=True):
         print(INIT_MSG)
         self.mode = mode
@@ -50,6 +51,7 @@ class CustomCipher:
         @return: result
             A string representing the transformed right block
         """
+
         def substitute(byte: str):
             """
             Substitution of a character(byte) of the right block
@@ -65,7 +67,7 @@ class CustomCipher:
 
         def permutation(block: str):
             """
-            Permutate the right block by reversing the order.
+            Permutates the right block by reversing the order.
 
             @param block:
                 A string containing characters (bytes) of
@@ -85,16 +87,25 @@ class CustomCipher:
         # XOR with the subkey
         return ''.join(chr(ord(r) ^ ord(k)) for r, k in zip(new_right_block, key))
 
-    def encrypt(self, plaintext: str):
+    def encrypt(self, plaintext: str, verbose=False):
         """
         Encrypts plaintext to ciphertext using an 8-round
         Feistel architecture.
 
+        @attention: Avalanche Analysis
+            Only performable when verbose mode is on and
+            is executed only in ECB mode
+
         @param plaintext:
             The plaintext to be encrypted (string)
 
-        @return: ciphertext
-            The encrypted plaintext (string)
+        @param verbose:
+            An optional boolean flag to turn on verbose mode;
+            used for avalanche analysis (default=False)
+
+        @return: ciphertext or round_data
+            The encrypted plaintext (string); or if verbose mode is on
+            return intermediate round_data (list[])
         """
         # Initialize Variables
         ciphertext = ''
@@ -103,14 +114,20 @@ class CustomCipher:
             return None
 
         if self.mode == ECB:
-            print("[+] ECB ENCRYPTION: Now encrypting plaintext in ECB mode...")
+            if not verbose:  # Don't print if verbose (during avalanche analysis)
+                print("[+] ECB ENCRYPTION: Now encrypting plaintext in ECB mode...")
 
             # Partition the plaintext into blocks and encrypt each block
             for i in range(0, len(plaintext), self.block_size):
                 block = plaintext[i:i + self.block_size]
 
-                if len(block) < self.block_size:  # Pad block to 64
+                if len(block) < self.block_size:  # Pad block to 64 bits
                     block = pad_block(self.block_size, block)
+
+                if verbose:  # For avalanche analysis (1 block only)
+                    round_data = encrypt_block(self, block, verbose=True)
+                    round_data.append(self.key)
+                    return round_data
 
                 ciphertext += encrypt_block(self, block)
 
@@ -122,7 +139,8 @@ class CustomCipher:
 
             for i in range(0, len(plaintext), self.block_size):
                 block = plaintext[i:i + self.block_size]
-                if len(block) < self.block_size:  # Pad if necessary
+
+                if len(block) < self.block_size:
                     block = pad_block(self.block_size, block)
 
                 block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, block))  # XOR with previous block
@@ -190,6 +208,7 @@ class CustomCipher:
 
         @return: None
         """
+
         def generate_subkeys():
             """
             Generates a set of sub-keys from the main key on a

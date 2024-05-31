@@ -1,8 +1,10 @@
+"""
+Description:
+This Python file contains utility functions used by the "models".
+"""
 import os
 from typing import TextIO
-
 from prettytable import PrettyTable
-
 from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
@@ -26,7 +28,7 @@ def is_valid_key(key: str, block_size: int):
         True if valid; false otherwise
     """
     if len(key) < block_size:
-        print(f"[+] INVALID KEY: An invalid key was provided (key has to be greater than {block_size} characters)!")
+        print(f"[+] INVALID KEY: An invalid key was provided (key must be at least {block_size} characters)!")
         return False
     else:
         return True
@@ -95,7 +97,7 @@ def unpad_block(block: str):
     return block
 
 
-def encrypt_block(self: object, block: str):
+def encrypt_block(self: object, block: str, verbose=False):
     """
     Encrypts the given block on a per round basis.
 
@@ -105,14 +107,21 @@ def encrypt_block(self: object, block: str):
     @param block:
         A string representing the block to be encrypted
 
+    @param verbose:
+        An optional boolean flag to turn on verbose mode;
+        used for avalanche analysis (default=False)
+
     @return: encrypted_block
         The encrypted left and right halves concatenated (string)
     """
+    # Add initial block for verbose mode
+    round_data = [block] if verbose else None
+
     # Split block into two halves
     half_length = len(block) // 2
     left_half, right_half = block[:half_length], block[half_length:]
 
-    # Apply the encryption rounds
+    # Apply per round encryption
     for subkey in self.sub_keys:
         temp = left_half
         left_half = right_half
@@ -120,8 +129,17 @@ def encrypt_block(self: object, block: str):
         # XOR the result of round function and left half (converted to ASCII values)
         right_half = ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(temp, self.round_function(right_half, subkey)))
 
-    # Concatenate the two halves
-    return right_half + left_half
+        if verbose:  # Add intermediate cipher blocks (if verbose)
+            round_data.append(left_half + right_half)
+
+    # Swap halves for final ciphertext
+    final_cipher = right_half + left_half
+
+    if verbose:  # Add final ciphertext
+        round_data.append(final_cipher)
+        return round_data
+
+    return final_cipher
 
 
 def decrypt_block(self: object, block: str):
@@ -141,7 +159,7 @@ def decrypt_block(self: object, block: str):
     half_length = len(block) // 2
     left_half, right_half = block[:half_length], block[half_length:]
 
-    # Apply the encryption rounds
+    # Apply per round decryption
     for subkey in reversed(self.sub_keys):
         temp = left_half
         left_half = right_half
@@ -297,7 +315,7 @@ def change_mode(cipher: object):
     print(f"[+] MODE CHANGED TO -> {cipher.mode.upper()}")
 
 
-def change_main_key(self: object, cipher: object):
+def change_main_key(UserViewModel: object, cipher: object):
     """
     Prompts the user for a new main key for
     the CustomCipher and replaces the old key.
@@ -305,7 +323,7 @@ def change_main_key(self: object, cipher: object):
     @attention: Use Case
         This function is called by UserViewModel class
 
-    @param self:
+    @param UserViewModel:
         A reference to the calling class object (UserViewModel)
 
     @param cipher:
@@ -313,7 +331,7 @@ def change_main_key(self: object, cipher: object):
 
     @return: None
     """
-    if len(self.pending_operations) > 0:
+    if len(UserViewModel.pending_operations) > 0:
         print("[+] CHANGE KEY ERROR: Cannot change main key since there are pending decryption operations!")
         return None
 
@@ -329,7 +347,7 @@ def change_main_key(self: object, cipher: object):
             return None
 
 
-def regenerate_sub_keys(self: object, cipher: object):
+def regenerate_sub_keys(UserViewModel: object, cipher: object):
     """
     Regenerates sub-keys by using either the main key,
     default sub-keys, or user-provided sub-keys.
@@ -337,7 +355,7 @@ def regenerate_sub_keys(self: object, cipher: object):
     @attention: Use Case
         This function is called by UserViewModel class
 
-    @param self:
+    @param UserViewModel:
         A reference to the calling class object (UserViewModel)
 
     @param cipher:
@@ -345,7 +363,7 @@ def regenerate_sub_keys(self: object, cipher: object):
 
     @return: None
     """
-    if len(self.pending_operations) > 0:
+    if len(UserViewModel.pending_operations) > 0:
         print("[+] CHANGE KEY ERROR: Cannot change main key because there are pending decryption operations!")
         return None
 
@@ -588,12 +606,6 @@ def decrypt(UserViewModel: object, cipher: object):
 
         if option == 3:  # Picture
             mode, ciphertext, iv = UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
-
-        if option == 4:  # TODO: Manually decrypt any file (user-specified path)
-            # FIRST, check if file exists
-            # SECOND, check if file is encrypted with this application (based on the new file name)
-            # THIRD: User must provide all subkeys, the mode, and the IV (if CBC)
-            print("PLACEHOLDER")
 
     except KeyError:
         print(f"[+] DECRYPT ERROR: The selected operation does not exist; please try again")
