@@ -1,3 +1,4 @@
+import copy
 import select
 import sys
 from models.CustomCipher import CustomCipher
@@ -24,7 +25,7 @@ class UserViewModel:
         self.cipher = CustomCipher(key=args[0], mode=args[1], subkey_flag=args[2])
         self.terminate = False
         self.pending_operations = {}  # Format => {Encrypted_Format: (mode, cipher_text/path_to_file, IV)}
-        self.cipher_state = []  # TODO: Used for avalanche effect if SKAC (used to revert if key and subkey changes)
+        self.cipher_state = []  # => For avalanche effect (SKAC) (used to revert when key and subkey changes)
 
     def start(self):
         """
@@ -32,35 +33,6 @@ class UserViewModel:
         @return: None
         """
         self.__menu()
-
-    def close_application(self):
-        """
-        Terminates the application by setting a termination flag to
-        end all current threads.
-
-        @param self:
-            A reference to the calling class object
-
-        @return: None
-        """
-        print("[+] CLOSE APPLICATION: Now closing the application...")
-        self.terminate = True
-        print("[+] APPLICATION CLOSED: Application has been successfully terminated!")
-
-    def save_cipher_state(self):
-        """
-        Saves the cipher's state (class attributes)
-        by putting the cipher's configurations into
-        a cache (list).
-
-        @attention Use Case:
-            This function is only used for avalanche analysis
-            (SKAC) when the bits of the main key change.
-
-        @return: None
-        """
-        for attribute in vars(self.cipher).values():
-            self.cipher_state.append(attribute)
 
     def __menu(self):
         """
@@ -113,3 +85,61 @@ class UserViewModel:
                 print("=" * 160)
                 print(self.table)
                 print(USER_INPUT_PROMPT)
+
+    def close_application(self):
+        """
+        Terminates the application by setting a termination flag to
+        end all current threads.
+
+        @param self:
+            A reference to the calling class object
+
+        @return: None
+        """
+        print("[+] CLOSE APPLICATION: Now closing the application...")
+        self.terminate = True
+        print("[+] APPLICATION CLOSED: Application has been successfully terminated!")
+
+    def save_cipher_state(self):
+        """
+        Saves the cipher's state (class attributes)
+        by putting the cipher's configurations into
+        a cache (list).
+
+        @attention Use Case:
+            This function is only used for avalanche analysis
+            (SKAC) when the bits of the main key change.
+
+        @return: None
+        """
+        print("=" * 160)
+        print("[+] Saving cipher's state...")
+        for attribute in vars(self.cipher).values():
+            self.cipher_state.append(copy.deepcopy(attribute))
+        print("[+] OPERATION SUCCESSFUL: The cipher's state has been saved!")
+        print("=" * 160)
+
+    def restore_cipher_state(self, cipher: object):
+        """
+        Restores the cipher's previous state after performing
+        avalanche analysis (SKAC).
+
+        @attention Use Case:
+            This function is only used after avalanche analysis
+            (SKAC) when the bits of the main key change.
+
+        @param cipher:
+            A CustomCipher object
+
+        @return: None
+        """
+        print("=" * 160)
+        print("[+] Restoring cipher's previous state...")
+        cipher_attributes = list(vars(cipher).keys())
+
+        # Iterate, unpack, and set each cipher attribute back to its previous state
+        for attribute, value in zip(cipher_attributes, self.cipher_state):
+            setattr(cipher, attribute, value)
+
+        self.cipher_state.clear()
+        print("[+] OPERATION SUCCESSFUL: The cipher's state has been restored!")

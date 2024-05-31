@@ -208,7 +208,6 @@ class CustomCipher:
 
         @return: None
         """
-
         def generate_subkeys():
             """
             Generates a set of sub-keys from the main key on a
@@ -240,7 +239,7 @@ class CustomCipher:
 
         print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
-        # a) Check if call is from UserMenu (to regenerate sub-keys)
+        # a) Generate subkey if called by UserViewModel (user menu)
         if menu_option is not None:
             self.sub_keys.clear()  # Clear existing sub-keys
             if menu_option == 1:

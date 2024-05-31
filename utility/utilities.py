@@ -242,7 +242,7 @@ def get_default_subkeys(default_keys: list[int]):
     return sub_keys
 
 
-def make_table(title: str, columns: list[str], content: list[list[str]]):
+def make_table(title: str, columns: list[str], content: list):
     """
     Constructs a PrettyTable.
 

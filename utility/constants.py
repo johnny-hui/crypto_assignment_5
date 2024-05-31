@@ -23,7 +23,7 @@ GET_SUBKEY_USER_PROMPT = "[+] Enter 1 (to provide own sub-keys); Enter 2 (to use
 
 # USER VIEWMODEL
 MIN_MENU_ITEM_VALUE = 1
-MAX_MENU_ITEM_VALUE = 8
+MAX_MENU_ITEM_VALUE = 9
 USER_MENU_TITLE = "Menu Options"
 USER_MENU_COLUMNS = ["Option", "Command"]
 USER_MENU_OPTIONS_LIST = [
@@ -82,8 +82,11 @@ USER_DECRYPT_OPTIONS = [
 
 
 # AVALANCHE ANALYSIS
-AVALANCHE_ANALYSIS_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own plaintext message (64-bit or 8 char only)"
-                             "; Enter 2 to use generated plaintext message; or (Enter 0 to quit): ")
+AVALANCHE_ANALYSIS_SPAC_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own plaintext message (64-bit or 8 char "
+                                  "only; Enter 2 to use generated plaintext message; or (Enter 0 to quit): ")
+AVALANCHE_ANALYSIS_SKAC_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own key (64-bit or 8 char "
+                                  "only; Enter 2 to use a randomly generated a key; or (Enter 0 to quit): ")
+AVALANCHE_ANALYSIS_USER_INPUT_KEY = "[+] Enter a key (8 characters only): "
 AVALANCHE_ANALYSIS_USER_INPUT = "[+] Enter a plaintext message (8 characters only): "
 AVALANCHE_TASK_SPAC_TITLE = "Encryption {} Bit Change in Plaintext (SPAC) - [Starting from MSB]"
 AVALANCHE_TASK_SKAC_TITLE = ("Encrypting Ciphertext after {} Bit Changes in Key (SKAC) - {} 4th Bit Position "
@@ -95,5 +98,12 @@ OP_ENCRYPT = "ENCRYPTION"
 OP_DECRYPT = "DECRYPTION"
 NO_SUBKEYS_ENCRYPT_MSG = "[+] ENCRYPT ERROR: There are no sub-keys provided!"
 NO_SUBKEYS_DECRYPT_MSG = "[+] DECRYPT ERROR: There are no sub-keys provided!"
-
-
+GRAPH_LABEL_SPAC = ["1 Bit Change in Plaintext", "2 Bit Change in Plaintext", "3 Bit Change in Plaintext",
+                    "4 Bit Change in Plaintext", "5 Bit Change in Plaintext", "6 Bit Change in Plaintext",
+                    "7 Bit Change in Plaintext", "8 Bit Change in Plaintext", "9 Bit Change in Plaintext",
+                    "10 Bit Change in Plaintext"]
+GRAPH_LABEL_SKAC = ["1 Bit Change in Key", "2 Bit Change in Key", "3 Bit Change in Key",
+                    "4 Bit Change in Key", "5 Bit Change in Key", "6 Bit Change in Key",
+                    "7 Bit Change in Key", "8 Bit Change in Key", "9 Bit Change in Key",
+                    "10 Bit Change in Key"]
+SAVE_GRAPH_DIR = "data/graphs/{}"
