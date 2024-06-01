@@ -147,7 +147,7 @@ def encrypt_block(self: object, block: str, verbose=False):
 
 def decrypt_block(self: object, block: str):
     """
-    Decrypts the given block on a per round basis.
+    Decrypts the given block on a per-round basis.
 
     @param self:
         A reference to the calling class object
@@ -500,8 +500,7 @@ def write_to_text_file(file_path: str, data: str):
     try:
         with open(file_path, 'wb') as file:
             file.write(data.encode('latin-1'))
-        print(f"[+] OPERATION COMPLETED: The file has been successfully decrypted and saved "
-              f"to '{file_path}'")
+        print(f"[+] OPERATION COMPLETED: The file has been successfully saved to '{file_path}'")
     except IOError as e:
         print(f"[+] WRITE FILE ERROR: An error occurred while writing to the file {file_path}: {e}")
 
@@ -566,8 +565,7 @@ def write_image(img_path: str, header: bytes, data: bytes):
         with open(img_path, 'wb') as f:
             f.write(header)
             f.write(data)
-        print(f"[+] OPERATION COMPLETED: The file has been successfully decrypted and saved "
-              f"to '{img_path}'")
+        print(f"[+] OPERATION COMPLETED: The file has been successfully saved to '{img_path}'")
     except IOError as e:
         print(f"[+] WRITE IMAGE ERROR: An error occurred while writing to the file ({img_path}): {e}")
 

@@ -85,7 +85,7 @@ USER_DECRYPT_OPTIONS = [
 # AVALANCHE ANALYSIS
 AVALANCHE_ANALYSIS_SPAC_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own plaintext message (64-bit or 8 char "
                                   "only; Enter 2 to use generated plaintext message; or (Enter 0 to quit): ")
-AVALANCHE_ANALYSIS_SKAC_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own key (64-bit or 8 char "
+AVALANCHE_ANALYSIS_SKAC_PROMPT = ("[+] AVALANCHE ANALYSIS: Enter 1 to provide own key (64-bit or 8 char) "
                                   "only; Enter 2 to use a randomly generated a key; or (Enter 0 to quit): ")
 AVALANCHE_ANALYSIS_USER_INPUT_KEY = "[+] Enter a key (8 characters only): "
 AVALANCHE_ANALYSIS_USER_INPUT = "[+] Enter a plaintext message (8 characters only): "
