@@ -43,9 +43,9 @@ MENU_ACTION_START_MSG = "\n[+] ACTION SELECTED: Now performing menu item {}..."
 INVALID_INPUT_MENU_ERROR = "[+] ERROR: Invalid input was provided to menu: {}"
 PENDING_OP_TITLE = "Pending Operations (Decryption)"
 PENDING_OP_COLUMNS = ["Format", "Mode", "Encrypted Payload", "Initialization Vector (IV)"]
-CACHE_FORMAT_USER_INPUT = "USER_INPUT"
-CACHE_FORMAT_TEXT_FILE = "TEXT"   # => Path to file
-CACHE_FORMAT_PICTURE = "PICTURE"  # => Path to file
+FORMAT_USER_INPUT = "USER_INPUT"
+FORMAT_TEXT_FILE = "TEXT"   # => Path to file
+FORMAT_PICTURE = "PICTURE"  # => Path to file
 
 
 # USER MENU - REGENERATE SUBKEYS

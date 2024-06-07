@@ -1,0 +1,123 @@
+    def round_function(self, right_block: str, key: str):
+        """
+        A basic round function that involves substitution
+        and permutation of the right block, followed by an
+        XOR operation with the key.
+
+        @param right_block:
+            A string containing the right block
+
+        @param key:
+            A string representing the subkey
+
+        @return: result
+            A string representing the transformed right block
+        """
+
+        def substitute(byte: str):
+            """
+            Substitution of a character(byte) of the right block
+            by taking ASCII value modulo 256.
+
+            @param byte:
+                A string containing a single character (8-bits)
+
+            @return: chr(ord(byte) % 256)
+                The substituted character
+            """
+            return chr(ord(byte) % 256)
+
+        def permutation(block: str):
+            """
+            Permutates the right block by reversing the order.
+
+            @param block:
+                A string containing characters (bytes) of
+                the right block
+
+            @return: block[::-1]
+                The reversed order of the right block
+            """
+            return block[::-1]
+
+        # SUBSTITUTION: Each byte(char) of right block
+        new_right_block = ''.join(substitute(byte) for byte in right_block)
+
+        # PERMUTATION: Reverses the order of bytes(char)
+        new_right_block = permutation(new_right_block)
+
+        # Combine R and K and hash them
+        combined = (new_right_block + key).encode('latin-1')
+        hash_result = hashlib.sha3_256(combined).digest()
+
+        # Use the first 8 bytes of the hash result as the output
+        return hash_result[:8].decode('latin-1')
+
+OR
+
+def round_function(self, right_block: str, key: str):
+    """
+    A basic round function that involves substitution
+    and permutation of the right block, followed by an
+    XOR operation with the key.
+
+    @param right_block:
+        A string containing the right block
+
+    @param key:
+        A string representing the subkey
+
+    @return: result
+        A string representing the transformed right block
+    """
+
+    def substitute(byte: str):
+        """
+        Substitution of a character(byte) of the right block
+        by taking ASCII value modulo 256.
+
+        @param byte:
+            A string containing a single character (8-bits)
+
+        @return: chr(ord(byte) % 256)
+            The substituted character
+        """
+        return chr(ord(byte) % 256)
+
+    def bit_permutation(block: str):
+        """
+        Permutates the block using a predefined bit-level permutation pattern.
+
+        @param block:
+            A string containing characters (bytes) of the block
+
+        @return: permuted_block
+            The permuted block as a string
+        """
+        # Convert block to a binary string
+        binary_block = ''.join(f'{ord(char):08b}' for char in block)
+
+        # Define a bit permutation pattern
+        perm_pattern = [15, 7, 3, 11, 13, 3, 1, 22, 14, 6, 2, 10, 12, 29, 0, 8]
+
+        # Apply the permutation pattern to the binary string
+        permuted_binary_block = ''.join(binary_block[i] for i in perm_pattern)
+
+        # Convert the permuted binary string back to a character string
+        permuted_block = ''.join(
+            chr(int(permuted_binary_block[i:i + 8], 2)) for i in range(0, len(permuted_binary_block), 8))
+
+        return permuted_block
+
+    # SUBSTITUTION: Each byte(char) of right block
+    new_right_block = ''.join(substitute(byte) for byte in right_block)
+
+    # PERMUTATION: Reverses the order of bytes(char)
+    new_right_block = bit_permutation(new_right_block)
+
+    # Combine R and K and hash them
+    combined = (new_right_block + key).encode('latin-1')
+    hash_result = hashlib.sha3_256(combined).digest()
+
+    # Use the first 8 bytes of the hash result as the output
+    return hash_result[:8].decode('latin-1')

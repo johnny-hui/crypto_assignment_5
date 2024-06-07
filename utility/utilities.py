@@ -10,8 +10,8 @@ from prettytable import PrettyTable
 from utility.constants import OP_DECRYPT, OP_ENCRYPT, NO_SUBKEYS_ENCRYPT_MSG, \
     NO_SUBKEYS_DECRYPT_MSG, INVALID_MENU_SELECTION, MENU_ACTION_START_MSG, INVALID_INPUT_MENU_ERROR, ECB, CBC, \
     CHANGE_KEY_PROMPT, REGENERATE_SUBKEY_PROMPT, REGENERATE_SUBKEY_OPTIONS, USER_ENCRYPT_OPTIONS_PROMPT, \
-    USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, CACHE_FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
-    USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, CACHE_FORMAT_TEXT_FILE, CACHE_FORMAT_PICTURE, \
+    USER_ENCRYPT_OPTIONS, USER_ENCRYPT_INPUT_PROMPT, FORMAT_USER_INPUT, PENDING_OP_TITLE, PENDING_OP_COLUMNS, \
+    USER_DECRYPT_OPTIONS_PROMPT, USER_DECRYPT_OPTIONS, FORMAT_TEXT_FILE, FORMAT_PICTURE, \
     USER_ENCRYPT_FILE_PATH_PROMPT, INIT_CONFIG_ATTRIBUTES, INIT_CONFIG_TITLE, INIT_CONFIG_COLUMNS, \
     USER_ENCRYPT_IMAGE_PATH_PROMPT
 
@@ -62,7 +62,7 @@ def is_sub_keys_generated(subkeys: list, operation: str):
     return True
 
 
-def pad_block(block_size: int, block: str):
+def pad_block(block_size: int, block: bytes):
     """
     Pads the given block according to the block size with a
     character based on the padding length (based on the PKCS#7
@@ -72,35 +72,31 @@ def pad_block(block_size: int, block: str):
         An integer representing the block size
 
     @param block:
-        A string representing the block to be padded
+        An array of bytes representing the block to be padded
 
     @return: padded_block
         The padded block (String)
     """
-    padding_length = block_size - len(block)
-    padding = chr(padding_length) * padding_length
-    return block + padding
+    pad_len = block_size - len(block)
+    return block + bytes([pad_len] * pad_len)
 
 
-def unpad_block(block: str):
+def unpad_block(block: bytes):
     """
     Removes padding from any given block (based on
     the PKCS#7 padding scheme).
 
     @param block:
-        A string representing the block to be unpadded
+        An array of bytes representing the block to be unpadded
 
     @return: unpadded_block
-        The unpadded block (String)
+        The unpadded block (Bytes[])
     """
-    padding_char = block[-1]
-    padding_len = ord(padding_char)
-    if block.endswith(padding_char * padding_len):
-        return block[:-padding_len]
-    return block
+    pad_len = block[-1]
+    return block[:-pad_len]
 
 
-def encrypt_block(self: object, block: str, verbose=False):
+def encrypt_block(self: object, block: bytes, verbose=False):
     """
     Encrypts the given block on a per round basis.
 
@@ -108,7 +104,7 @@ def encrypt_block(self: object, block: str, verbose=False):
         A reference to the calling class object
 
     @param block:
-        A string representing the block to be encrypted
+        An array of bytes representing the block to be encrypted
 
     @param verbose:
         An optional boolean flag to turn on verbose mode;
@@ -130,7 +126,7 @@ def encrypt_block(self: object, block: str, verbose=False):
         left_half = right_half
 
         # XOR the result of round function and left half (converted to ASCII values)
-        right_half = ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(temp, self.round_function(right_half, subkey)))
+        right_half = bytes([a ^ b for a, b in zip(temp, self.round_function(right_half, subkey))])
 
         if verbose:  # Add intermediate cipher blocks (if verbose)
             round_data.append(left_half + right_half)
@@ -145,7 +141,7 @@ def encrypt_block(self: object, block: str, verbose=False):
     return final_cipher
 
 
-def decrypt_block(self: object, block: str):
+def decrypt_block(self: object, block: bytes):
     """
     Decrypts the given block on a per-round basis.
 
@@ -153,7 +149,7 @@ def decrypt_block(self: object, block: str):
         A reference to the calling class object
 
     @param block:
-        A string representing the block to be encrypted
+        An array of bytes representing the block to be decrypted
 
     @return: decrypted_block
         The decrypted left and right halves concatenated (string)
@@ -168,7 +164,7 @@ def decrypt_block(self: object, block: str):
         left_half = right_half
 
         # XOR the result of round function and left half (converted to ASCII values)
-        right_half = ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(temp, self.round_function(right_half, subkey)))
+        right_half = bytes([a ^ b for a, b in zip(temp, self.round_function(right_half, subkey))])
 
     # Concatenate the two halves
     return right_half + left_half
@@ -440,7 +436,6 @@ def view_pending_operations(UserViewModel: object):
     else:
         content_list = []
         for key, (mode, ciphertext, iv) in UserViewModel.pending_operations.items():
-            ciphertext = ''.join(char for char in ciphertext if char.isprintable())  # Remove bytes from ciphertext
             content_list.append([key, mode, ciphertext, iv])
         print(make_table(title=PENDING_OP_TITLE, columns=PENDING_OP_COLUMNS, content=content_list))
 
@@ -479,12 +474,12 @@ def read_text_file(file_path: str):
         return None
     try:
         with open(file_path, 'rb') as file:
-            return file.read().decode('latin-1')
+            return file.read()
     except FileNotFoundError:
         print("[+] READ FILE ERROR: File not found in path provided ({})".format(file_path))
 
 
-def write_to_text_file(file_path: str, data: str):
+def write_to_text_file(file_path: str, data: bytes):
     """
     Opens a text file and returns the
     contents of the file (as a string).
@@ -499,7 +494,7 @@ def write_to_text_file(file_path: str, data: str):
     """
     try:
         with open(file_path, 'wb') as file:
-            file.write(data.encode('latin-1'))
+            file.write(data)
         print(f"[+] OPERATION COMPLETED: The file has been successfully saved to '{file_path}'")
     except IOError as e:
         print(f"[+] WRITE FILE ERROR: An error occurred while writing to the file {file_path}: {e}")
@@ -738,13 +733,13 @@ def _perform_user_input_operation(UserViewModel: object, cipher: object, operati
     """
     if operation == OP_ENCRYPT:
         user_text = input(USER_ENCRYPT_INPUT_PROMPT)
-        ciphertext = cipher.encrypt(user_text)
-        save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_USER_INPUT, payload=ciphertext)
+        ciphertext = cipher.encrypt(user_text, format=FORMAT_USER_INPUT)
+        save_to_pending_operations(UserViewModel, cipher, format=FORMAT_USER_INPUT, payload=ciphertext)
         print(f"[+] OPERATION COMPLETED: The corresponding ciphertext -> {ciphertext}")
 
     if operation == OP_DECRYPT:
         # Get cipher data from pending_operations
-        mode, ciphertext, iv = UserViewModel.pending_operations[CACHE_FORMAT_USER_INPUT]
+        mode, ciphertext, iv = UserViewModel.pending_operations[FORMAT_USER_INPUT]
 
         # Set cipher config
         cipher.mode = mode.lower()
@@ -752,9 +747,9 @@ def _perform_user_input_operation(UserViewModel: object, cipher: object, operati
             cipher.iv = iv
 
         # Perform decryption
-        plaintext = cipher.decrypt(ciphertext)
+        plaintext = cipher.decrypt(ciphertext, format=FORMAT_USER_INPUT)
         print(f"[+] OPERATION COMPLETED: The corresponding plaintext -> {plaintext}")
-        del UserViewModel.pending_operations[CACHE_FORMAT_USER_INPUT]
+        del UserViewModel.pending_operations[FORMAT_USER_INPUT]
 
 
 def _perform_text_file_operation(UserViewModel: object, cipher: object, operation: str):
@@ -777,25 +772,25 @@ def _perform_text_file_operation(UserViewModel: object, cipher: object, operatio
         file_path = input(USER_ENCRYPT_FILE_PATH_PROMPT)
 
         # Open file, get contents, encrypt and save file to path
-        plaintext_content = read_text_file(file_path)
-        if plaintext_content is not None:
-            ciphertext = cipher.encrypt(plaintext_content)
-            new_save_path = modify_save_path(file_path, tag="_encrypted.txt", mode=cipher.mode, format=CACHE_FORMAT_TEXT_FILE)
-            save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_TEXT_FILE, payload=new_save_path)
+        plaintext_bytes = read_text_file(file_path)
+        if plaintext_bytes is not None:
+            ciphertext = cipher.encrypt(plaintext_bytes, format=FORMAT_TEXT_FILE)
+            new_save_path = modify_save_path(file_path, tag="_encrypted.txt", mode=cipher.mode, format=FORMAT_TEXT_FILE)
+            save_to_pending_operations(UserViewModel, cipher, format=FORMAT_TEXT_FILE, payload=new_save_path)
             write_to_text_file(new_save_path, ciphertext)
 
     if operation == OP_DECRYPT:
-        mode, file_path, iv = UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
-        encrypted_content = read_text_file(file_path)
+        mode, file_path, iv = UserViewModel.pending_operations[FORMAT_TEXT_FILE]
+        ciphertext_bytes = read_text_file(file_path)
 
-        if encrypted_content is not None:
+        if ciphertext_bytes is not None:
             cipher.mode = mode.lower()
             if cipher.mode == CBC:
                 cipher.iv = iv
-            plaintext = cipher.decrypt(encrypted_content)
-            new_save_path = modify_save_path(file_path, tag="_decrypted.txt", mode=cipher.mode, format=CACHE_FORMAT_TEXT_FILE)
-            write_to_text_file(new_save_path, plaintext)
-            del UserViewModel.pending_operations[CACHE_FORMAT_TEXT_FILE]
+            decrypted_bytes = cipher.decrypt(ciphertext_bytes, format=FORMAT_TEXT_FILE)
+            new_save_path = modify_save_path(file_path, tag="_decrypted.txt", mode=cipher.mode, format=FORMAT_TEXT_FILE)
+            write_to_text_file(new_save_path, decrypted_bytes)
+            del UserViewModel.pending_operations[FORMAT_TEXT_FILE]
 
 
 def __perform_image_operation(UserViewModel: object, cipher: object, operation: str):
@@ -820,13 +815,13 @@ def __perform_image_operation(UserViewModel: object, cipher: object, operation: 
         # Open image, get bytes, encrypt and save encrypted image to path
         header, image_data = read_image(img_path)
         if header is not None and image_data is not None:
-            encrypted_data = cipher.encrypt(image_data.decode('latin-1'))
-            new_save_path = modify_save_path(img_path, tag="_encrypted.bmp", mode=cipher.mode, format=CACHE_FORMAT_PICTURE)
-            save_to_pending_operations(UserViewModel, cipher, format=CACHE_FORMAT_PICTURE, payload=new_save_path)
-            write_image(new_save_path, header, encrypted_data.encode('latin-1'))
+            encrypted_data = cipher.encrypt(image_data, format=FORMAT_PICTURE)
+            new_save_path = modify_save_path(img_path, tag="_encrypted.bmp", mode=cipher.mode, format=FORMAT_PICTURE)
+            save_to_pending_operations(UserViewModel, cipher, format=FORMAT_PICTURE, payload=new_save_path)
+            write_image(new_save_path, header, encrypted_data)
 
     if operation == OP_DECRYPT:
-        mode, file_path, iv = UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
+        mode, file_path, iv = UserViewModel.pending_operations[FORMAT_PICTURE]
         header, encrypted_data = read_image(file_path)
 
         # Open image, get bytes, decrypt and save decrypted image to path
@@ -834,7 +829,7 @@ def __perform_image_operation(UserViewModel: object, cipher: object, operation: 
             cipher.mode = mode.lower()
             if cipher.mode == CBC:
                 cipher.iv = iv
-            decrypted_data = cipher.decrypt(encrypted_data.decode('latin-1'))
-            new_save_path = modify_save_path(file_path, tag="_decrypted.bmp", mode=cipher.mode, format=CACHE_FORMAT_PICTURE)
-            write_image(new_save_path, header, decrypted_data.encode('latin-1'))
-            del UserViewModel.pending_operations[CACHE_FORMAT_PICTURE]
+            decrypted_data = cipher.decrypt(encrypted_data, format=FORMAT_PICTURE)
+            new_save_path = modify_save_path(file_path, tag="_decrypted.bmp", mode=cipher.mode, format=FORMAT_PICTURE)
+            write_image(new_save_path, header, decrypted_data)
+            del UserViewModel.pending_operations[FORMAT_PICTURE]

@@ -1,6 +1,8 @@
+import hashlib
 import secrets
 from utility.constants import (INIT_MSG, ROUNDS, BLOCK_SIZE, DEFAULT_ROUND_KEYS,
-                               OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG, GET_SUBKEY_USER_PROMPT)
+                               OP_ENCRYPT, OP_DECRYPT, INIT_SUCCESS_MSG, GET_SUBKEY_USER_PROMPT, FORMAT_TEXT_FILE,
+                               FORMAT_PICTURE)
 from utility.init import ECB, CBC
 from utility.utilities import (pad_block, encrypt_block, decrypt_block,
                                unpad_block, get_subkeys_from_user, get_user_command_option, get_default_subkeys,
@@ -36,7 +38,7 @@ class CustomCipher:
         self.process_subkey_generation()
         print(INIT_SUCCESS_MSG)
 
-    def round_function(self, right_block: str, key: str):
+    def round_function(self, right_block: bytes, key: bytes):
         """
         A basic round function that involves substitution
         and permutation of the right block, followed by an
@@ -52,7 +54,8 @@ class CustomCipher:
             A string representing the transformed right block
         """
 
-        def substitute(byte: str):
+        # TODO: Incorporate round number to this function
+        def substitute(byte: int):
             """
             Substitution of a character(byte) of the right block
             by taking ASCII value modulo 256.
@@ -63,9 +66,9 @@ class CustomCipher:
             @return: chr(ord(byte) % 256)
                 The substituted character
             """
-            return chr(ord(byte) % 256)
+            return byte % 256
 
-        def permutation(block: str):
+        def permutation(block: bytes):
             """
             Permutates the right block by reversing the order.
 
@@ -78,18 +81,21 @@ class CustomCipher:
             """
             return block[::-1]
 
-        # SUBSTITUTION: Each byte(char) of right block
-        new_right_block = ''.join(substitute(byte) for byte in right_block)
+        # SUBSTITUTION: Each byte of right block
+        new_right_block = bytes(substitute(byte) for byte in right_block)
 
-        # PERMUTATION: Reverses the order of bytes(char)
+        # PERMUTATION: Reverses the order of bytes
         new_right_block = permutation(new_right_block)
 
-        # XOR with the subkey
-        return ''.join(chr(ord(r) ^ ord(k)) for r, k in zip(new_right_block, key))
+        # Add the right block + key and take the SHA3-256 hash of the result
+        result = hashlib.sha3_256(new_right_block + key).digest()
 
-    def encrypt(self, plaintext: str, verbose=False):
+        # Take the 23rd and 31st byte of the hash result as the output
+        return result[23:31]
+
+    def encrypt(self, plaintext: str | bytes, format=None, verbose=False):
         """
-        Encrypts plaintext to ciphertext using an 8-round
+        Encrypts plaintext to ciphertext using a 16-round
         Feistel architecture.
 
         @attention: Avalanche Analysis
@@ -99,16 +105,23 @@ class CustomCipher:
         @param plaintext:
             The plaintext to be encrypted (string)
 
+        @param format:
+            A string representing the format to be encrypted
+
         @param verbose:
             An optional boolean flag to turn on verbose mode;
             used for avalanche analysis (default=False)
 
         @return: ciphertext or round_data
-            The encrypted plaintext (string); or if verbose mode is on
-            return intermediate round_data (list[])
+            The encrypted plaintext (bytes[]); or if verbose
+            mode is on return intermediate round_data (list[])
         """
         # Initialize Variables
-        ciphertext = ''
+        ciphertext = b''
+
+        # Encode plaintext (string) to bytes (if the format is a string)
+        if format not in {FORMAT_TEXT_FILE, FORMAT_PICTURE}:
+            plaintext = plaintext.encode()
 
         if is_sub_keys_generated(self.sub_keys, operation=OP_ENCRYPT) is False:
             return None
@@ -135,7 +148,7 @@ class CustomCipher:
             print("[+] CBC ENCRYPTION: Now encrypting plaintext in CBC mode...")
 
             self.iv = secrets.token_bytes(self.block_size)  # Generate IV of block size
-            previous_block = self.iv.decode('latin-1')  # Use 'latin-1' encoding (ensures each char is a value 0-255)
+            previous_block = self.iv
 
             for i in range(0, len(plaintext), self.block_size):
                 block = plaintext[i:i + self.block_size]
@@ -143,26 +156,29 @@ class CustomCipher:
                 if len(block) < self.block_size:
                     block = pad_block(self.block_size, block)
 
-                block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, block))  # XOR with previous block
+                block = bytes([a ^ b for a, b in zip(previous_block, block)])  # XOR with previous block
                 encrypted_block = encrypt_block(self, block)
                 ciphertext += encrypted_block
                 previous_block = encrypted_block
 
         return ciphertext
 
-    def decrypt(self, ciphertext: str):
+    def decrypt(self, ciphertext: bytes, format=None):
         """
-        Decrypts ciphertext back into plaintext using an 8-round
-        Feistel architecture.
+        Decrypts ciphertext back into plaintext (or bytes)
+        using a 16-round Feistel architecture.
 
         @param ciphertext:
-            The ciphertext to be decrypted (string)
+            The ciphertext to be decrypted (bytes)
+
+        @param format:
+            A string representing the format to be decrypted
 
         @return: plaintext
             The decrypted plaintext (string)
         """
         # Initialize Variables
-        plaintext = ''
+        plaintext_bytes = b''
 
         if is_sub_keys_generated(self.sub_keys, operation=OP_DECRYPT) is False:
             return None
@@ -173,28 +189,29 @@ class CustomCipher:
             # Partition the ciphertext into blocks and decrypt each block
             for i in range(0, len(ciphertext), self.block_size):
                 block = ciphertext[i:i + self.block_size]
-                plaintext_block = decrypt_block(self, block)
-                plaintext += plaintext_block
+                decrypted_block = decrypt_block(self, block)
+                plaintext_bytes += decrypted_block
 
         if self.mode == CBC:
             print("[+] CBC DECRYPTION: Now decrypting ciphertext in CBC mode...")
 
             # Get IV from class
-            previous_block = self.iv.decode('latin-1')
+            previous_block = self.iv
 
             for i in range(0, len(ciphertext), self.block_size):
                 block = ciphertext[i:i + self.block_size]
                 decrypted_block = decrypt_block(self, block)
-                plaintext_block = ''.join(chr(ord(p) ^ ord(c)) for p, c in zip(previous_block, decrypted_block))
-                plaintext += plaintext_block
+                decrypted_block = bytes([p ^ c for p, c in zip(previous_block, decrypted_block)])
+                plaintext_bytes += decrypted_block
                 previous_block = block
 
             self.iv = None  # Reset IV for next encryption
 
-        if len(plaintext) % self.block_size == 0:
-            plaintext = unpad_block(plaintext)
-
-        return plaintext
+        if len(plaintext_bytes) % self.block_size == 0:
+            if format in {FORMAT_TEXT_FILE, FORMAT_PICTURE}:
+                return unpad_block(plaintext_bytes)  # => Return bytes
+            else:
+                return unpad_block(plaintext_bytes).decode()  # => Return string
 
     def process_subkey_generation(self, menu_option=None):
         """
@@ -208,6 +225,7 @@ class CustomCipher:
 
         @return: None
         """
+
         def generate_subkeys():
             """
             Generates a set of sub-keys from the main key on a
@@ -225,19 +243,17 @@ class CustomCipher:
             if len(self.key) < self.block_size:
                 self.key = (self.key * (self.block_size // len(self.key) + 1))[:self.block_size]
 
-            # Convert each character of key to ASCII values
-            key_bytes = [ord(char) for char in self.key]
-
             # Round-key generation with a permutation scheme
+            key_bytes = bytearray(self.key.encode())  # Convert key to bytearray of integers
             for i in range(self.rounds):
                 # a) Byte rotation with round number and length of the key
                 subkey = key_bytes[i % len(self.key):] + key_bytes[:i % len(self.key)]
 
                 # b) XOR each byte of the shifted result with the round number
-                subkey = [(byte ^ (i + 1)) for byte in subkey]
-                self.sub_keys.append(''.join(chr(byte) for byte in subkey))
+                subkey = bytes([byte ^ (i + 1) for byte in subkey])
+                self.sub_keys.append(subkey)
 
-        print("[+] SUBKEY GENERATION: Now processing sub-keys...")
+            print("[+] SUBKEY GENERATION: Now processing sub-keys...")
 
         # a) Generate subkey if called by UserViewModel (user menu)
         if menu_option is not None:
